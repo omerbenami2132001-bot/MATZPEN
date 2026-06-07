@@ -3,13 +3,18 @@ import express from "express";
 import adapterRoute from "./src/routes/adapter.route";
 import { kafkaService } from "./src/utils/kafkaService";
 import { s3Service } from "./src/utils/s3Client";
-
+//CR keep in mind that every console.log should be replaced with our logger
+//CR same wiith config and index.ts starting file. you should check that you 
+// are using the standart way our team uses to create and validate
+// config and index.ts. if there is none sit with them
+// and descide on one because I dont want to have 7 different structures for 7 different projects
 validateConfig();
 
 const app = express();
 
 app.use("/adapter", adapterRoute);
 
+//CR full names on params
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });

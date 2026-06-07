@@ -1,3 +1,4 @@
+//CR you should use index files for cleaner imports. for example if you have a folder like utils that has a lot of imports
 import express, { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../utils";
@@ -15,8 +16,10 @@ const processor = new AdapterProcessor(apiClient, s3Service, metadataClient, job
 // ============================================
 // POST /adapter/download/:folderId
 // ============================================
-
+//CR routers shouldn't have nl in them even if its simple steps like validating or handling job
+// you should create an AdapterService to handle all of these (even if it looks a little weird at first)
 router.post("/download/:folderId", async (req: Request, res: Response) => {
+  //CR maybe generate requestId in middleware so it would be for all routes?
   const requestId = uuidv4();
   logger.log("INFO", requestId, STEPS.HTTP_REQUEST, "Request received", { method: req.method, path: req.originalUrl });
 

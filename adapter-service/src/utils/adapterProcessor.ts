@@ -22,7 +22,7 @@ export interface ParsedRequest {
   endTime: number;
   recursive: boolean;
 }
-
+//CR seems weird to have only one 
 export class AdapterProcessor {
   private apiClient: ApiClient;
   private s3Service: S3Service;
@@ -84,6 +84,7 @@ export class AdapterProcessor {
 
   private async processFile(fileInfo: FileInfo, position: number, folderId: string, requestId: string) {
     const fileId = fileInfo.id;
+    //CR good use of let (:
     let currentStep = "unknown";
 
     try {
@@ -92,7 +93,7 @@ export class AdapterProcessor {
 
       currentStep = "fetch_metadata";
       const metadata = await this.metadataClient.fetchAll(fileId, requestId, fileInfo as Record<string, unknown>);
-
+      //CR weired name for step no? it is build not validate
       currentStep = "validate_s3_document";
       logger.log("INFO", requestId, STEPS.VALIDATE_S3_DOC, "Validating S3 document", { fileId, metadataFields: Object.keys(metadata).length });
       const s3Document = buildS3Document({ fileInfo, fileBase64: base64, metadata });
@@ -123,10 +124,11 @@ export class AdapterProcessor {
   // ============================================
   // processFolder — סורק תיקייה, רקורסיבי
   // ============================================
-
+  //CR proccess function shouldn't retrieve data, and retriving function (non existant) should'nt process it
+  // please split into two functions for less resposnibility on one single function
   private async processFolder(folderId: string, startTime: number, endTime: number, recursive: boolean, requestId: string): Promise<void> {
     logger.log("INFO", requestId, STEPS.COLLECT_FILES, "Scanning folder", { folderId });
-
+    //CR never use let unless you need to iterate and add to a value! best practice to use const
     let response;
     try {
       response = await withRetry(
@@ -148,7 +150,7 @@ export class AdapterProcessor {
       folders: filtered.filter((c) => c.isFolder).length,
       files: filtered.filter((c) => !c.isFolder).length,
     });
-
+    //CR can destructre item into its children for easier readablility
     for (const item of filtered) {
       if (item.isFolder) {
         if (recursive) await this.processFolder(item.id, startTime, endTime, recursive, requestId);
