@@ -1,5 +1,5 @@
 import { z } from "zod";
-
+//CR maybe more specific name for source?
 export const SourceEnum = z.enum(["adapter-service"]);
 
 export const KafkaMessageSchema = z.object({

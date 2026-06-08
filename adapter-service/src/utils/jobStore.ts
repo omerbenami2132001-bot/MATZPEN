@@ -1,9 +1,10 @@
+//CR why not use string enum? its a typescript feature if I remember correctly
 export const JOB_STATUS = {
   RUNNING: "running",
   COMPLETED: "completed",
   FAILED: "failed",
 } as const;
-
+//CR job/file should have a source as well
 export interface FileResult {
   success: boolean;
   fileId: string;
@@ -137,5 +138,5 @@ export class JobStore {
     };
   }
 }
-
+//CR why not use an actual singleton?
 export const jobStore = new JobStore();

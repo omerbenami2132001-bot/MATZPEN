@@ -38,8 +38,10 @@ export class MetadataClient {
   }
 
   static extractFields(responseData: Record<string, unknown>, fields: string[]): Record<string, unknown> {
+    //CR not a good name because it is too general
     let merged: Record<string, unknown> = {};
-
+    //CR could be a reduce instead of a for
+    // read about reduce iterator function
     for (const fieldSpec of fields) {
       if (fieldSpec === "*") {
         merged = { ...merged, ...responseData };
@@ -150,6 +152,7 @@ export class MetadataClient {
 }
 
 // Singleton
+//CR this is not a singleton because it can be deleted/changed
 export const metadataClient = new MetadataClient([
   { url: process.env.METADATA_API_2_URL, fields: METADATA_API_2_FIELDS, prefix: METADATA_API_2_PREFIX, schema: MetadataApi2Schema },
 ]);

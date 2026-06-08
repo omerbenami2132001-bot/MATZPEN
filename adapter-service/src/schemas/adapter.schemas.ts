@@ -1,5 +1,5 @@
 import { z } from "zod";
-
+//CR why not have them in query params?
 export const AdapterRequestHeadersSchema = z.object({
   "x-start-time": z.string().regex(/^\d+$/, "x-start-time must be UNIX timestamp"),
   "x-end-time": z.string().regex(/^\d+$/, "x-end-time must be UNIX timestamp"),

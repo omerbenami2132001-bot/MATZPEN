@@ -4,6 +4,8 @@ import { withRetry } from "./retry";
 import * as logger from "./logger";
 import { STEPS } from "./logger";
 
+//CR this is good. you have some functionallity we don't have in other services.
+// how do we make sure all of our services use the same code for s3 service?
 export class S3Service {
   private client: S3Client;
   private bucket: string;
@@ -32,8 +34,10 @@ export class S3Service {
       endpoint: process.env.S3_ENDPOINT,
     });
   }
-
+  //CR buildKey should get a date and infer the key from it (for when we do backfills and don't
+  // want the path to be now)
   buildKey(fileName: string): string {
+
     const now = new Date();
     const year = now.getUTCFullYear();
     const month = String(now.getUTCMonth() + 1).padStart(2, "0");
@@ -42,7 +46,8 @@ export class S3Service {
 
     const lastDot = fileName.lastIndexOf(".");
     const baseName = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
-
+    //CR we want to put it in a seperate folder inside the images bucket
+    // for example raw/{SOURCE_NAME}/...
     return `${SOURCE_NAME}/${year}/${month}/${date}/${hour}/${baseName}.json`;
   }
 

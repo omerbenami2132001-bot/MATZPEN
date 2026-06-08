@@ -1,5 +1,6 @@
 import { ZodSchema } from "zod";
-
+//CR Errors should be put in a sperate folder and file for all errors so to not "dirty" the bl
+// I would suggest an errors folder and each error or group of similar errors in a file.
 export class ValidationError extends Error {
   validationErrors: string[];
 

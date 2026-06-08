@@ -1,3 +1,5 @@
+//CR good practice. I would not put env vars here because they have a place in config.
+//CR also, adapter-sevice isn't a source (: and topic should be an env var
 export const SOURCE_NAME = "adapter-service";
 export const S3_BUCKET = process.env.S3_BUCKET || "raw-data";
 export const AWS_REGION = process.env.AWS_REGION || "us-east-1";

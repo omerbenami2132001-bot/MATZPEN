@@ -6,7 +6,7 @@ import { S3Service } from "../utils/s3Client";
 import { MetadataClient } from "../utils/metadataClient";
 import { JobStore } from "../utils/jobStore";
 import { ErrorHandler } from "../utils/errorHandler";
-
+//for large classes types and interfaces should be in a types file
 interface FileInfo {
   id: string;
   name: string;

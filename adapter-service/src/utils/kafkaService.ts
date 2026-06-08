@@ -56,7 +56,10 @@ export class KafkaService {
       });
       return;
     }
-
+    //CR producer.send is not atoimic!!!
+    // this means you can accidentally
+    // send the same message multiple times! be very carful or remove retry
+    // maybe there is a way to use transactions?
     await withRetry(
       () => this.producer!.send({
         topic: this.topic,
@@ -81,5 +84,5 @@ export class KafkaService {
     }
   }
 }
-
+//CR check that you are in sync with luria on kafka class
 export const kafkaService = new KafkaService();

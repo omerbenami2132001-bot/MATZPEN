@@ -1,5 +1,5 @@
 import { z } from "zod";
-
+//CR api scehma is not a good name. what if we have 100 apis
 export const ChildSchema = z.object({
   id: z.string().min(1, "Child ID cannot be empty"),
   name: z.string().min(1, "Child name cannot be empty"),
