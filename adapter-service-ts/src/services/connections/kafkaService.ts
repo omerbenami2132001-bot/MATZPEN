@@ -1,25 +1,33 @@
 import { Kafka, Producer } from "kafkajs";
 import fs from "fs";
-import * as logger from "./logger";
-import { STEPS } from "./logger";
-import { KAFKA_TOPIC } from "./constants";
-import { withRetry } from "./retry";
+import * as logger from "../../utils/logger";
+import { STEPS } from "../../utils/logger";
+import { config } from "../../utils/config";
+import { withRetry } from "../../utils/retry";
 
 export class KafkaService {
+  private static instance: KafkaService;
   private producer: Producer | null = null;
   private connected = false;
   private topic: string;
 
-  constructor() {
-    this.topic = KAFKA_TOPIC;
+  private constructor() {
+    this.topic = config.kafka.topic;
+  }
+
+  static getInstance(): KafkaService {
+    if (!KafkaService.instance) {
+      KafkaService.instance = new KafkaService();
+    }
+    return KafkaService.instance;
   }
 
   async connect(): Promise<void> {
     if (this.connected) return;
 
-    const brokers = process.env.KAFKA_PRODUCER_BROKERS;
-    const certPath = process.env.KAFKA_CERT;
-    const keyPath = process.env.KAFKA_KEY;
+    const brokers = config.kafka.brokers;
+    const certPath = config.kafka.certPath;
+    const keyPath = config.kafka.keyPath;
 
     if (!brokers) {
       logger.log("WARN", "system", STEPS.KAFKA_PRODUCE, "KAFKA_PRODUCER_BROKERS not set, Kafka disabled");
@@ -40,7 +48,9 @@ export class KafkaService {
     }
 
     const kafka = new Kafka(kafkaConfig);
-    this.producer = kafka.producer();
+    this.producer = kafka.producer({
+      idempotent: true,
+    });
     await this.producer.connect();
     this.connected = true;
 
@@ -81,5 +91,3 @@ export class KafkaService {
     }
   }
 }
-
-export const kafkaService = new KafkaService();

@@ -1,18 +1,17 @@
 import {
   ChildSchema, FolderResponseSchema,
-  AdapterRequestHeadersSchema, AdapterRequestParamsSchema,
-  S3FileDocumentSchema, KafkaMessageSchema,
+  AdapterRequestQuerySchema, AdapterRequestParamsSchema,
+  RawDataDocumentSchema, KafkaMessageSchema,
   MetadataApi2Schema,
 } from "../index";
-import { validateOrThrow, ValidationError } from "../../utils/validation";
+import { validateOrThrow } from "../../utils/validation";
+import { ValidationError } from "../../errors";
 import { extractFileType } from "../../utils/eventBuilder";
-import { MetadataClient } from "../../utils/metadataClient";
-import { S3Service } from "../../utils/s3Client";
-import { normalizeFieldName, isDateLike, toUnixMs, normalizeObject } from "../../utils/normalizer";
+import { fromJson } from "../../utils/fieldExtractor";
+import { S3Service } from "../../services/connections/s3Client";
+import { normalizeFieldName, isDateLike, convertToUnixMs, normalizeObject, flattenWithPrefix } from "../../utils/normalizer";
 
-const flattenWithPrefix = MetadataClient.flattenWithPrefix;
-const extractFields = MetadataClient.extractFields;
-const s3 = new S3Service();
+const s3 = S3Service.getInstance();
 
 const GREEN = "\x1b[32m", RED = "\x1b[31m", RESET = "\x1b[0m", BOLD = "\x1b[1m";
 let passed = 0, failed = 0;
@@ -41,27 +40,27 @@ console.log(`\n${BOLD}FolderResponseSchema${RESET}`);
 test("mixed children", () => { const r = validateOrThrow(FolderResponseSchema, { children: [{ id: "f1", name: "a.png", isFolder: false, created: 1716825600 }, { id: "d1", name: "sub", isFolder: true }] }); assert(r.children.length === 2, "2 children"); });
 test("rejects missing children", () => { assertThrows(FolderResponseSchema, {}); });
 
-// AdapterRequestHeadersSchema
-console.log(`\n${BOLD}AdapterRequestHeadersSchema${RESET}`);
-test("valid headers", () => { validateOrThrow(AdapterRequestHeadersSchema, { "x-start-time": "1716825600", "x-end-time": "1717430400", "x-recursive": "true" }); });
-test("rejects non-numeric", () => { assertThrows(AdapterRequestHeadersSchema, { "x-start-time": "abc", "x-end-time": "1717430400", "x-recursive": "true" }); });
-test("rejects missing recursive", () => { assertThrows(AdapterRequestHeadersSchema, { "x-start-time": "1716825600", "x-end-time": "1717430400" }); });
-test("rejects invalid recursive", () => { assertThrows(AdapterRequestHeadersSchema, { "x-start-time": "1716825600", "x-end-time": "1717430400", "x-recursive": "maybe" }); });
-test("rejects start after end", () => { assertThrows(AdapterRequestHeadersSchema, { "x-start-time": "1717430400", "x-end-time": "1716825600", "x-recursive": "true" }); });
-test("rejects start equal end", () => { assertThrows(AdapterRequestHeadersSchema, { "x-start-time": "1716825600", "x-end-time": "1716825600", "x-recursive": "true" }); });
+// AdapterRequestQuerySchema
+console.log(`\n${BOLD}AdapterRequestQuerySchema${RESET}`);
+test("valid query", () => { validateOrThrow(AdapterRequestQuerySchema, { startTime: "1716825600", endTime: "1717430400", recursive: "true" }); });
+test("rejects non-numeric", () => { assertThrows(AdapterRequestQuerySchema, { startTime: "abc", endTime: "1717430400", recursive: "true" }); });
+test("rejects missing recursive", () => { assertThrows(AdapterRequestQuerySchema, { startTime: "1716825600", endTime: "1717430400" }); });
+test("rejects invalid recursive", () => { assertThrows(AdapterRequestQuerySchema, { startTime: "1716825600", endTime: "1717430400", recursive: "maybe" }); });
+test("rejects start after end", () => { assertThrows(AdapterRequestQuerySchema, { startTime: "1717430400", endTime: "1716825600", recursive: "true" }); });
+test("rejects start equal end", () => { assertThrows(AdapterRequestQuerySchema, { startTime: "1716825600", endTime: "1716825600", recursive: "true" }); });
 
 // AdapterRequestParamsSchema
 console.log(`\n${BOLD}AdapterRequestParamsSchema${RESET}`);
 test("valid", () => { validateOrThrow(AdapterRequestParamsSchema, { folderId: "folder-123" }); });
 test("rejects empty", () => { assertThrows(AdapterRequestParamsSchema, { folderId: "" }); });
 
-// S3FileDocumentSchema
-console.log(`\n${BOLD}S3FileDocumentSchema${RESET}`);
-test("defaults to {}", () => { const r: any = validateOrThrow(S3FileDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc" }); assert(JSON.stringify(r.metadata) === "{}", "default {}"); });
-test("with flat metadata", () => { validateOrThrow(S3FileDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc", metadata: { ex_category: "financial", ab_retention_days: 365 } }); });
-test("empty metadata", () => { const r: any = validateOrThrow(S3FileDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc", metadata: {} }); assert(JSON.stringify(r.metadata) === "{}", "empty"); });
-test("rejects no origin_id", () => { assertThrows(S3FileDocumentSchema, { source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc" }); });
-test("rejects no image_base64", () => { assertThrows(S3FileDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png" }); });
+// RawDataDocumentSchema
+console.log(`\n${BOLD}RawDataDocumentSchema${RESET}`);
+test("defaults to {}", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc" }); assert(JSON.stringify(r.metadata) === "{}", "default {}"); });
+test("with flat metadata", () => { validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc", metadata: { ex_category: "financial", ab_retention_days: 365 } }); });
+test("empty metadata", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc", metadata: {} }); assert(JSON.stringify(r.metadata) === "{}", "empty"); });
+test("rejects no origin_id", () => { assertThrows(RawDataDocumentSchema, { source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc" }); });
+test("rejects no image_base64", () => { assertThrows(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png" }); });
 
 // KafkaMessageSchema
 console.log(`\n${BOLD}KafkaMessageSchema${RESET}`);
@@ -79,20 +78,28 @@ test("lowercase", () => assert(extractFileType("Image.PNG") === "png", "lower"))
 
 // S3Service.buildKey
 console.log(`\n${BOLD}S3Service.buildKey${RESET}`);
-test("correct structure", () => { const k = s3.buildKey("photo.png"); const p = k.split("/"); assert(p[0] === "adapter-service", "source"); assert(p[5] === "photo.json", "name.json"); });
+test("correct structure with date", () => {
+  const key = s3.buildKey("photo.png", new Date("2026-05-27T14:30:00Z"));
+  assert(key === "adapter-service/2026/05/27/14/photo.json", key);
+});
 test("pdf → json", () => assert(s3.buildKey("report.pdf").endsWith("/report.json"), "report.json"));
 test("multi-dot", () => assert(s3.buildKey("data.export.final.csv").endsWith("/data.export.final.json"), "dots"));
 test("no ext", () => assert(s3.buildKey("README").endsWith("/README.json"), "README.json"));
+test("defaults to now", () => { const key = s3.buildKey("test.png"); const parts = key.split("/"); assert(parts[0] === "adapter-service", "source"); assert(parts.length === 6, "6 parts"); });
+test("backfill date", () => {
+  const key = s3.buildKey("old-file.png", new Date("2025-01-15T09:00:00Z"));
+  assert(key === "adapter-service/2025/01/15/09/old-file.json", key);
+});
 
-// extractFields
-console.log(`\n${BOLD}extractFields${RESET}`);
-test("child* unpacks", () => { const r = extractFields({ child: { id: "f1", name: "x" }, folder: { id: "d1" } }, ["child*"]); assert(r.id === "f1", "id"); });
-test("no * takes as-is", () => { const r = extractFields({ tags: ["Q3"], status: "active" }, ["tags", "status"]); assert(Array.isArray(r.tags), "tags"); assert(r.status === "active", "status"); });
-test("mix * and no *", () => { const r = extractFields({ child: { id: "f1" }, tags: ["Q3"] }, ["child*", "tags"]); assert(r.id === "f1", "unpacked"); assert(Array.isArray(r.tags), "as-is"); });
-test("multiple *", () => { const r = extractFields({ child: { id: "f1" }, perms: { read: true } }, ["child*", "perms*"]); assert(r.id === "f1" && r.read === true, "merged"); });
-test("skip missing", () => { const r = extractFields({ child: { id: "f1" } }, ["child*", "nope"]); assert(r.id === "f1", "ok"); });
-test("empty list", () => { assert(Object.keys(extractFields({ child: { id: "f1" } }, [])).length === 0, "empty"); });
-test("* takes everything", () => { const r = extractFields({ a: 1, b: "two", c: [3] }, ["*"]); assert(r.a === 1, "a"); assert(r.b === "two", "b"); assert(Array.isArray(r.c), "c"); });
+// fromJson
+console.log(`\n${BOLD}fromJson${RESET}`);
+test("child* unpacks", () => { const r = fromJson({ child: { id: "f1", name: "x" }, folder: { id: "d1" } }, ["child*"]); assert(r.id === "f1", "id"); });
+test("no * takes as-is", () => { const r = fromJson({ tags: ["Q3"], status: "active" }, ["tags", "status"]); assert(Array.isArray(r.tags), "tags"); assert(r.status === "active", "status"); });
+test("mix * and no *", () => { const r = fromJson({ child: { id: "f1" }, tags: ["Q3"] }, ["child*", "tags"]); assert(r.id === "f1", "unpacked"); assert(Array.isArray(r.tags), "as-is"); });
+test("multiple *", () => { const r = fromJson({ child: { id: "f1" }, perms: { read: true } }, ["child*", "perms*"]); assert(r.id === "f1" && r.read === true, "merged"); });
+test("skip missing", () => { const r = fromJson({ child: { id: "f1" } }, ["child*", "nope"]); assert(r.id === "f1", "ok"); });
+test("empty list", () => { assert(Object.keys(fromJson({ child: { id: "f1" } }, [])).length === 0, "empty"); });
+test("* takes everything", () => { const r = fromJson({ a: 1, b: "two", c: [3] }, ["*"]); assert(r.a === 1, "a"); assert(r.b === "two", "b"); assert(Array.isArray(r.c), "c"); });
 
 // flattenWithPrefix
 console.log(`\n${BOLD}flattenWithPrefix${RESET}`);
@@ -106,14 +113,14 @@ test("lowercase", () => assert(normalizeFieldName("Created At") === "created_at"
 test("special chars", () => assert(normalizeFieldName("100% Complete!") === "100_complete", "100_complete"));
 test("dashes → _", () => assert(normalizeFieldName("file--name") === "file_name", "file_name"));
 
-// isDateLike + toUnixMs
-console.log(`\n${BOLD}isDateLike + toUnixMs${RESET}`);
+// isDateLike + convertToUnixMs
+console.log(`\n${BOLD}isDateLike + convertToUnixMs${RESET}`);
 test("ISO is date", () => assert(isDateLike("2026-05-28T14:30:00Z"), "iso"));
 test("UNIX sec", () => assert(isDateLike(1716825600), "sec"));
 test("UNIX ms", () => assert(isDateLike(1716825600000), "ms"));
 test("not date", () => assert(!isDateLike("hello"), "no"));
-test("sec → ms", () => assert(toUnixMs(1716825600) === 1716825600000, "sec→ms"));
-test("ms stays", () => assert(toUnixMs(1716825600000) === 1716825600000, "stays"));
+test("sec → ms", () => assert(convertToUnixMs(1716825600) === 1716825600000, "sec→ms"));
+test("ms stays", () => assert(convertToUnixMs(1716825600000) === 1716825600000, "stays"));
 
 // normalizeObject
 console.log(`\n${BOLD}normalizeObject${RESET}`);

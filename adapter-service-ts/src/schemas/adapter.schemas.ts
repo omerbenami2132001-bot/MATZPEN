@@ -1,14 +1,14 @@
 import { z } from "zod";
 
-export const AdapterRequestHeadersSchema = z.object({
-  "x-start-time": z.string().regex(/^\d+$/, "x-start-time must be UNIX timestamp"),
-  "x-end-time": z.string().regex(/^\d+$/, "x-end-time must be UNIX timestamp"),
-  "x-recursive": z.string().regex(/^(true|false)$/i, "x-recursive must be 'true' or 'false'"),
+export const AdapterRequestQuerySchema = z.object({
+  startTime: z.string().regex(/^\d+$/, "startTime must be UNIX timestamp"),
+  endTime: z.string().regex(/^\d+$/, "endTime must be UNIX timestamp"),
+  recursive: z.string().regex(/^(true|false)$/i, "recursive must be 'true' or 'false'"),
 }).refine(
-  (headers) => parseInt(headers["x-start-time"], 10) < parseInt(headers["x-end-time"], 10),
-  { message: "x-start-time must be before x-end-time" }
+  (query) => parseInt(query.startTime, 10) < parseInt(query.endTime, 10),
+  { message: "startTime must be before endTime" }
 );
- 
+
 export const AdapterRequestParamsSchema = z.object({
   folderId: z.string().min(1, "folderId is required"),
 });

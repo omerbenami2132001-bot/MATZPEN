@@ -1,12 +1,13 @@
-export const JOB_STATUS = {
-  RUNNING: "running",
-  COMPLETED: "completed",
-  FAILED: "failed",
-} as const;
+export enum JOB_STATUS {
+  RUNNING = "running",
+  COMPLETED = "completed",
+  FAILED = "failed",
+}
 
 export interface FileResult {
   success: boolean;
   fileId: string;
+  source: string;
   durationMs: number;
   failedStep?: string;
   errorType?: string;
@@ -32,7 +33,17 @@ export interface Job {
 // JobStore — מעקב אחרי jobs בזיכרון (Map).
 // שומר סטטוס, progress ותוצאות. מספק response מוכן ל-HTTP.
 export class JobStore {
+  private static instance: JobStore;
   private jobs: Map<string, Job> = new Map();
+
+  private constructor() {}
+
+  static getInstance(): JobStore {
+    if (!JobStore.instance) {
+      JobStore.instance = new JobStore();
+    }
+    return JobStore.instance;
+  }
 
   create(requestId: string, folderId: string, params: { startTime: number; endTime: number; recursive: boolean }): Job {
     const job: Job = {
@@ -141,5 +152,3 @@ export class JobStore {
     };
   }
 }
-
-export const jobStore = new JobStore();

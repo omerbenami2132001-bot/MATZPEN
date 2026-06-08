@@ -9,5 +9,5 @@ export const KafkaMessageSchema = z.object({
   message: z.string().min(1),
   request_id: z.string().uuid(),
 });
- 
+
 export type KafkaMessage = z.infer<typeof KafkaMessageSchema>;

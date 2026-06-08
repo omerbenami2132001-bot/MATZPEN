@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const S3FileDocumentSchema = z.object({
+export const RawDataDocumentSchema = z.object({
   origin_id: z.string().min(1),
   source_name: z.string().min(1),
   insertion_time: z.string().datetime(),
@@ -9,5 +9,4 @@ export const S3FileDocumentSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).default({}),
 });
 
-export type S3FileDocument = z.infer<typeof S3FileDocumentSchema>;
- 
+export type RawDataDocument = z.infer<typeof RawDataDocumentSchema>;

@@ -2,14 +2,29 @@ import "dotenv/config";
 
 export const config = {
   port: process.env.PORT || 3000,
+  sourceName: process.env.SOURCE_NAME || "adapter-service",
   api: {
     baseUrl: process.env.API_BASE_URL,
     key: process.env.API_KEY,
     name: process.env.API_NAME,
   },
+  s3: {
+    bucket: process.env.S3_BUCKET || "raw-data",
+    region: process.env.AWS_REGION || "us-east-1",
+    endpoint: process.env.S3_ENDPOINT,
+  },
+  kafka: {
+    topic: process.env.KAFKA_TOPIC || "adapter.file.downloads",
+    brokers: process.env.KAFKA_PRODUCER_BROKERS,
+    certPath: process.env.KAFKA_CERT,
+    keyPath: process.env.KAFKA_KEY,
+  },
+  metadata: {
+    api2Url: process.env.METADATA_API_2_URL,
+  },
 };
 
-export function validateConfig(): void {
+export function validateConfig() {
   const missing: string[] = [];
 
   if (!config.api.baseUrl) missing.push("API_BASE_URL");

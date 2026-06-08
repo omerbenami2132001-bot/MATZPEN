@@ -1,15 +1,16 @@
 // AdapterService — מנהל את כל תהליך ה-adapter.
 // מקבל HTTP input, מוודא, מעבד קבצים, ומחזיר response.
 
-import { FolderResponseSchema, AdapterRequestHeadersSchema, AdapterRequestParamsSchema, Child } from "../schemas";
-import { validateOrThrow, buildS3Document, buildKafkaMessage, publishToKafka, logger, withRetry } from "../utils";
+import { FolderResponseSchema, AdapterRequestQuerySchema, AdapterRequestParamsSchema, Child } from "../schemas";
+import { validateOrThrow, buildS3Document, buildKafkaMessage, publishToKafka, logger, withRetry, config } from "../utils";
 import { STEPS } from "../utils/logger";
-import { ApiClient } from "../utils/httpClient";
-import { S3Service } from "../utils/s3Client";
-import { MetadataClient } from "../utils/metadataClient";
-import { JobStore } from "../utils/jobStore";
+import { ApiClient } from "./connections/httpClient";
+import { S3Service } from "./connections/s3Client";
+import { CargoMetadata } from "./cargoMetadata";
+import { Source1Metadata } from "./source1Metadata";
+import { JobStore } from "./jobStore";
 import { ErrorHandler } from "../utils/errorHandler";
-import { ValidationError } from "../utils/validation";
+import { ValidationError } from "../errors";
 import { v4 as uuidv4 } from "uuid";
 
 interface FileInfo {
@@ -29,13 +30,15 @@ interface HttpResponse {
 export class AdapterService {
   private apiClient: ApiClient;
   private s3Service: S3Service;
-  private metadataClient: MetadataClient;
+  private cargoMetadata: CargoMetadata;
+  private source1Metadata: Source1Metadata;
   private jobStore: JobStore;
 
-  constructor(apiClient: ApiClient, s3Service: S3Service, metadataClient: MetadataClient, jobStore: JobStore) {
+  constructor(apiClient: ApiClient, s3Service: S3Service, jobStore: JobStore) {
     this.apiClient = apiClient;
     this.s3Service = s3Service;
-    this.metadataClient = metadataClient;
+    this.cargoMetadata = new CargoMetadata();
+    this.source1Metadata = new Source1Metadata();
     this.jobStore = jobStore;
   }
 
@@ -43,19 +46,19 @@ export class AdapterService {
   // handleIngest — entry point for POST /download/:folderId
   // ============================================
 
-  handleIngest(headers: Record<string, string>, params: Record<string, string>): HttpResponse {
+  handleIngest(query: Record<string, string>, params: Record<string, string>): HttpResponse {
     const requestId = uuidv4();
     logger.log("INFO", requestId, STEPS.HTTP_REQUEST, "Request received");
 
     try {
       logger.log("INFO", requestId, STEPS.VALIDATE_INPUT, "Validating request");
 
-      const validatedHeaders = validateOrThrow(AdapterRequestHeadersSchema, headers);
+      const validatedQuery = validateOrThrow(AdapterRequestQuerySchema, query);
       const { folderId } = validateOrThrow(AdapterRequestParamsSchema, params);
 
-      const startTime = parseInt(validatedHeaders["x-start-time"], 10);
-      const endTime = parseInt(validatedHeaders["x-end-time"], 10);
-      const recursive = validatedHeaders["x-recursive"].toLowerCase() === "true";
+      const startTime = parseInt(validatedQuery.startTime, 10);
+      const endTime = parseInt(validatedQuery.endTime, 10);
+      const recursive = validatedQuery.recursive.toLowerCase() === "true";
 
       const existingJobId = this.jobStore.findRunning(folderId, startTime, endTime);
       if (existingJobId) {
@@ -179,14 +182,17 @@ export class AdapterService {
       const { base64 } = await this.downloadFileAsBase64(fileId, requestId);
 
       currentStep = "fetch_metadata";
-      const metadata = await this.metadataClient.fetchAll(fileId, requestId, fileInfo as Record<string, unknown>);
+      const cargoData = this.cargoMetadata.processCargo(fileInfo as Record<string, unknown>, requestId);
+      const source1Data = await this.source1Metadata.process(fileId, requestId);
+      const metadata = { ...cargoData, ...source1Data };
 
       currentStep = "build_s3_document";
       logger.log("INFO", requestId, STEPS.BUILD_S3_DOC, "Building S3 document", { fileId, metadataFields: Object.keys(metadata).length });
       const s3Document = buildS3Document({ fileInfo, fileBase64: base64, metadata });
 
       currentStep = "save_to_s3";
-      const s3Key = await this.s3Service.save(s3Document, fileInfo.name, requestId);
+      const fileDate = fileInfo.created ? new Date(fileInfo.created * 1000) : undefined;
+      const s3Key = await this.s3Service.save(s3Document, fileInfo.name, requestId, fileDate);
 
       currentStep = "build_kafka_msg";
       logger.log("INFO", requestId, STEPS.BUILD_KAFKA_MSG, "Building Kafka message", { fileId, s3Key });
@@ -196,7 +202,7 @@ export class AdapterService {
       await publishToKafka(kafkaMessage, requestId);
 
       const durationMs = Date.now() - startedAt;
-      const result = { success: true, fileId, durationMs };
+      const result = { success: true, fileId, source: config.sourceName, durationMs };
       this.jobStore.addFileResult(requestId, result);
       return result;
     } catch (err) {

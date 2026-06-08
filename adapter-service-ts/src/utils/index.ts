@@ -2,7 +2,7 @@
 export { config, validateConfig } from "./config";
 
 // Validation
-export { validateOrThrow, ValidationError } from "./validation";
+export { validateOrThrow } from "./validation";
 
 // Retry
 export { withRetry } from "./retry";
@@ -11,7 +11,7 @@ export { withRetry } from "./retry";
 export { buildS3Document, buildKafkaMessage, publishToKafka } from "./eventBuilder";
 
 // Normalizer (pure functions)
-export { normalizeFieldName, isDateLike, toUnixMs, normalizeObject } from "./normalizer";
+export { normalizeFieldName, isDateLike, convertToUnixMs, normalizeObject, flattenWithPrefix, metadataPipeline } from "./normalizer";
 
 // Constants
 export * from "./constants";
@@ -20,14 +20,8 @@ export * from "./constants";
 export * as logger from "./logger";
 export { STEPS } from "./logger";
 
-// Classes (singletons)
-export { ApiClient, apiClient } from "./httpClient";
-export { S3Service, s3Service } from "./s3Client";
-export { KafkaService, kafkaService } from "./kafkaService";
-export { MetadataClient, metadataClient } from "./metadataClient";
-export { JobStore, jobStore, JOB_STATUS } from "./jobStore";
-export type { FileResult, Job } from "./jobStore";
-
-// Classes (static / service)
+// Error Handler (static class)
 export { ErrorHandler } from "./errorHandler";
-export { AdapterService } from "./adapterService";
+
+// Field Extractor (shared extraction functions)
+export { fromJson } from "./fieldExtractor";

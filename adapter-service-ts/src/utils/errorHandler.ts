@@ -1,5 +1,6 @@
 import http from "http";
-import { ValidationError } from "./validation";
+import { ValidationError } from "../errors";
+import { config } from "./config";
 
 interface ClassifiedError {
   errorType: string;
@@ -45,6 +46,7 @@ export class ErrorHandler {
     return {
       success: false as const,
       fileId,
+      source: config.sourceName,
       durationMs,
       failedStep: step,
       errorType, httpStatus, statusText,

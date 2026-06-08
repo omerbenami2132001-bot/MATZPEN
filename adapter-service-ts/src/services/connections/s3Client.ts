@@ -1,53 +1,56 @@
 import { S3Client, PutObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
-import { AWS_REGION, S3_BUCKET, SOURCE_NAME } from "./constants";
-import { withRetry } from "./retry";
-import * as logger from "./logger";
-import { STEPS } from "./logger";
+import { config } from "../../utils/config";
+import { withRetry } from "../../utils/retry";
+import * as logger from "../../utils/logger";
+import { STEPS } from "../../utils/logger";
 
 export class S3Service {
+  private static instance: S3Service;
   private client: S3Client;
   private bucket: string;
 
-  constructor() {
+  private constructor() {
     this.client = new S3Client({
-      region: AWS_REGION,
-      endpoint: process.env.S3_ENDPOINT,
+      region: config.s3.region,
+      endpoint: config.s3.endpoint,
       forcePathStyle: true,
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
       },
     });
-    this.bucket = S3_BUCKET;
+    this.bucket = config.s3.bucket;
   }
 
-  /**
-   * בודק שהחיבור ל-S3 עובד וה-bucket נגיש
-   * HeadBucket = בקשה קלה שבודקת שה-bucket קיים ויש הרשאות
-   */
+  static getInstance(): S3Service {
+    if (!S3Service.instance) {
+      S3Service.instance = new S3Service();
+    }
+    return S3Service.instance;
+  }
+
   async connect(): Promise<void> {
     await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
     logger.log("INFO", "system", STEPS.SAVE_S3, "S3 connection verified", {
       bucket: this.bucket,
-      endpoint: process.env.S3_ENDPOINT,
+      endpoint: config.s3.endpoint,
     });
   }
 
-  buildKey(fileName: string): string {
-    const now = new Date();
-    const year = now.getUTCFullYear();
-    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-    const date = String(now.getUTCDate()).padStart(2, "0");
-    const hour = String(now.getUTCHours()).padStart(2, "0");
+  buildKey(fileName: string, date: Date = new Date()): string {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const hour = String(date.getUTCHours()).padStart(2, "0");
 
     const lastDot = fileName.lastIndexOf(".");
     const baseName = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
 
-    return `${SOURCE_NAME}/${year}/${month}/${date}/${hour}/${baseName}.json`;
+    return `${config.sourceName}/${year}/${month}/${day}/${hour}/${baseName}.json`;
   }
 
-  async save(document: Record<string, unknown>, fileName: string, requestId: string): Promise<string> {
-    const s3Key = this.buildKey(fileName);
+  async save(document: Record<string, unknown>, fileName: string, requestId: string, date?: Date): Promise<string> {
+    const s3Key = this.buildKey(fileName, date);
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,
@@ -70,5 +73,3 @@ export class S3Service {
     return s3Key;
   }
 }
-
-export const s3Service = new S3Service();
