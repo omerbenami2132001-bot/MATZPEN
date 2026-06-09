@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ChildSchema } from "./cargo_child.schemas";
+import { ChildSchema } from "./cargo.schemas";
 
 // ============================================
 // Metadata validation schemas

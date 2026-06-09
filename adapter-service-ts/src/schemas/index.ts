@@ -1,4 +1,4 @@
-export * from "./cargo_child.schemas";
+export * from "./cargo.schemas";
 export * from "./adapter.schemas";
 export * from "./kafka.schemas";
 export * from "./s3.schemas";
