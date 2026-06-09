@@ -11,7 +11,8 @@ const service = new AdapterService(
 router.post("/download/:folderId", async (req: Request, res: Response) => {
   const { statusCode, body } = service.handleIngest(
     req.query as Record<string, string>,
-    req.params as Record<string, string>
+    req.params as Record<string, string>,
+    "default"
   );
   res.status(statusCode).json(body);
 });

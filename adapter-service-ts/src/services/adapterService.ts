@@ -44,14 +44,12 @@ export class AdapterService {
   private apiClient: ApiClient;
   private s3Service: S3Service;
   private cargoMetadata: CargoMetadata;
-  private metadataSources: MetadataSource[];
   private jobStore: JobStore;
 
-  constructor(apiClient: ApiClient, s3Service: S3Service, jobStore: JobStore, apiType = "default") {
+  constructor(apiClient: ApiClient, s3Service: S3Service, jobStore: JobStore) {
     this.apiClient = apiClient;
     this.s3Service = s3Service;
     this.cargoMetadata = new CargoMetadata();
-    this.metadataSources = METADATA_SOURCES[apiType] || METADATA_SOURCES.default;
     this.jobStore = jobStore;
   }
 
@@ -59,7 +57,7 @@ export class AdapterService {
   // handleIngest — entry point for POST /download/:folderId
   // ============================================
 
-  handleIngest(query: Record<string, string>, params: Record<string, string>): HttpResponse {
+  handleIngest(query: Record<string, string>, params: Record<string, string>, apiType = "default"): HttpResponse {
     const requestId = uuidv4();
     logger.log("INFO", requestId, STEPS.HTTP_REQUEST, "Request received");
 
@@ -80,7 +78,7 @@ export class AdapterService {
       }
 
       this.jobStore.create(requestId, folderId, { startTime, endTime, recursive });
-      this.run(folderId, startTime, endTime, recursive, requestId);
+      this.run(folderId, startTime, endTime, recursive, requestId, apiType);
 
       return { statusCode: 202, body: this.jobStore.toCreatedResponse(requestId, folderId) };
     } catch (err) {
@@ -108,9 +106,9 @@ export class AdapterService {
   // run — background job
   // ============================================
 
-  private async run(folderId: string, startTime: number, endTime: number, recursive: boolean, requestId: string): Promise<void> {
+  private async run(folderId: string, startTime: number, endTime: number, recursive: boolean, requestId: string, apiType: string): Promise<void> {
     try {
-      await this.processFolder(folderId, startTime, endTime, recursive, requestId);
+      await this.processFolder(folderId, startTime, endTime, recursive, requestId, apiType);
       this.jobStore.complete(requestId);
 
       const job = this.jobStore.get(requestId)!;
@@ -153,7 +151,7 @@ export class AdapterService {
   // processFolder — filter + process each child
   // ============================================
 
-  private async processFolder(folderId: string, startTime: number, endTime: number, recursive: boolean, requestId: string): Promise<void> {
+  private async processFolder(folderId: string, startTime: number, endTime: number, recursive: boolean, requestId: string, apiType: string): Promise<void> {
     const children = await this.fetchFolder(folderId, requestId);
     if (!children) return;
 
@@ -169,13 +167,14 @@ export class AdapterService {
 
     for (const { id, name, isFolder, owner, description, created } of filtered) {
       if (isFolder) {
-        if (recursive) await this.processFolder(id, startTime, endTime, recursive, requestId);
+        if (recursive) await this.processFolder(id, startTime, endTime, recursive, requestId, apiType);
       } else {
         await this.processFile(
           { id, name, owner, description, created },
           this.jobStore.get(requestId)?.progress.totalProcessed || 0,
           folderId,
-          requestId
+          requestId,
+          apiType
         );
       }
     }
@@ -185,7 +184,7 @@ export class AdapterService {
   // processFile — full pipeline per file
   // ============================================
 
-  private async processFile(fileInfo: FileInfo, position: number, folderId: string, requestId: string) {
+  private async processFile(fileInfo: FileInfo, position: number, folderId: string, requestId: string, apiType: string) {
     const fileId = fileInfo.id;
     const startedAt = Date.now();
     let currentStep = "unknown";
@@ -196,8 +195,9 @@ export class AdapterService {
 
       currentStep = "fetch_metadata";
       const cargoData = this.cargoMetadata.processCargo(fileInfo as Record<string, unknown>, requestId);
+      const sources = METADATA_SOURCES[apiType] || METADATA_SOURCES.default;
       const additional = await Promise.all(
-        this.metadataSources.map((source) => source.process(fileId, requestId))
+        sources.map((source) => source.process(fileId, requestId))
       );
       const metadata = Object.assign({}, cargoData, ...additional);
 
