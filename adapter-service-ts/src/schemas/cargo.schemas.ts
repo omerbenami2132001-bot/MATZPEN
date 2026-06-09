@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ChildSchema = z.object({
+export const CargoChildSchema = z.object({
   id: z.string().min(1, "Child ID cannot be empty"),
   name: z.string().min(1, "Child name cannot be empty"),
   isFolder: z.boolean(),
@@ -12,10 +12,10 @@ export const ChildSchema = z.object({
   childCount: z.number().int().nonnegative().optional(),
 });
 
-export type Child = z.infer<typeof ChildSchema>;
+export type CargoChild = z.infer<typeof CargoChildSchema>;
 
 export const FolderResponseSchema = z.object({
-  children: z.array(ChildSchema),
+  children: z.array(CargoChildSchema),
 });
 
 export type FolderResponse = z.infer<typeof FolderResponseSchema>;

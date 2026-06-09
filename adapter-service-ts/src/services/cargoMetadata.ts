@@ -3,7 +3,7 @@ import * as logger from "../utils/logger";
 import { STEPS } from "../utils/logger";
 import { metadataPipeline } from "../utils/normalizer";
 import { METADATA_API_1_PREFIX } from "../utils/constants";
-import { MetadataApi1Schema } from "../schemas";
+import { CargoChildSchema } from "../schemas";
 
 export class CargoMetadata {
   processCargo(childData: Record<string, unknown>, requestId: string) {
@@ -11,7 +11,7 @@ export class CargoMetadata {
       prefix: METADATA_API_1_PREFIX, fieldCount: Object.keys(childData).length,
     });
 
-    const result = metadataPipeline(childData, METADATA_API_1_PREFIX, MetadataApi1Schema);
+    const result = metadataPipeline(childData, METADATA_API_1_PREFIX, CargoChildSchema);
 
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "Cargo metadata ready", {
       prefix: METADATA_API_1_PREFIX, fieldCount: Object.keys(result).length,

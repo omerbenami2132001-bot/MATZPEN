@@ -1,14 +1,9 @@
 import { z } from "zod";
-import { ChildSchema } from "./cargo.schemas";
 
 // ============================================
 // Metadata validation schemas
 // ============================================
 
-// API 1 (prefix "ex") — ChildSchema
-// הdata מגיע מ-folder listing, כבר עבר validation שם
-// מוגדר פה בשביל תיעוד — בפועל null כי לא צריך לבדוק פעמיים
-export const MetadataApi1Schema = ChildSchema;
 
 // API 2 (prefix "ab") — Position WKT
 const WKT_POINT_REGEX = /^POINT\(\s*-?\d+\.?\d*\s+-?\d+\.?\d*\s*\)$/;

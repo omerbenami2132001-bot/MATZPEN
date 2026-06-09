@@ -1,5 +1,5 @@
 import {
-  ChildSchema, FolderResponseSchema,
+  CargoChildSchema, FolderResponseSchema,
   AdapterRequestQuerySchema, AdapterRequestParamsSchema,
   RawDataDocumentSchema, KafkaMessageSchema,
   MetadataApi2Schema,
@@ -27,13 +27,13 @@ function assertThrows(schema: any, data: unknown, msg?: string) {
   catch (error) { if (!(error instanceof ValidationError)) throw error; }
 }
 
-// ChildSchema
-console.log(`\n${BOLD}ChildSchema${RESET}`);
-test("valid file with UNIX created", () => { const r = validateOrThrow(ChildSchema, { id: "file-abc", name: "photo.png", isFolder: false, created: 1716825600, owner: "john", description: "test" }); assert(r.created === 1716825600, "created"); });
-test("valid file minimal", () => { validateOrThrow(ChildSchema, { id: "f1", name: "x.png", isFolder: false }); });
-test("rejects empty id", () => { assertThrows(ChildSchema, { id: "", name: "x", isFolder: false }); });
-test("rejects missing isFolder", () => { assertThrows(ChildSchema, { id: "f1", name: "x" }); });
-test("valid folder", () => { validateOrThrow(ChildSchema, { id: "d1", name: "src", isFolder: true, childCount: 5 }); });
+// CargoChildSchema
+console.log(`\n${BOLD}CargoChildSchema${RESET}`);
+test("valid file with UNIX created", () => { const r = validateOrThrow(CargoChildSchema, { id: "file-abc", name: "photo.png", isFolder: false, created: 1716825600, owner: "john", description: "test" }); assert(r.created === 1716825600, "created"); });
+test("valid file minimal", () => { validateOrThrow(CargoChildSchema, { id: "f1", name: "x.png", isFolder: false }); });
+test("rejects empty id", () => { assertThrows(CargoChildSchema, { id: "", name: "x", isFolder: false }); });
+test("rejects missing isFolder", () => { assertThrows(CargoChildSchema, { id: "f1", name: "x" }); });
+test("valid folder", () => { validateOrThrow(CargoChildSchema, { id: "d1", name: "src", isFolder: true, childCount: 5 }); });
 
 // FolderResponseSchema
 console.log(`\n${BOLD}FolderResponseSchema${RESET}`);

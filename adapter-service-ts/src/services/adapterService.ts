@@ -1,7 +1,7 @@
 // AdapterService — מנהל את כל תהליך ה-adapter.
 // מקבל HTTP input, מוודא, מעבד קבצים, ומחזיר response.
 
-import { FolderResponseSchema, AdapterRequestQuerySchema, AdapterRequestParamsSchema, Child } from "../schemas";
+import { FolderResponseSchema, AdapterRequestQuerySchema, AdapterRequestParamsSchema, CargoChild } from "../schemas";
 import { validateOrThrow, buildS3Document, buildKafkaMessage, publishToKafka, logger, withRetry, config } from "../utils";
 import { STEPS } from "../utils/logger";
 import { ApiClient } from "./connections/httpClient";
@@ -120,7 +120,7 @@ export class AdapterService {
   // fetchFolder — HTTP GET → return children
   // ============================================
 
-  private async fetchFolder(folderId: string, requestId: string): Promise<Child[] | null> {
+  private async fetchFolder(folderId: string, requestId: string): Promise<CargoChild[] | null> {
     logger.log("INFO", requestId, STEPS.COLLECT_FILES, "Fetching folder", { folderId });
 
     try {
@@ -220,7 +220,7 @@ export class AdapterService {
   // Private helpers
   // ============================================
 
-  private filterByTimeRange(children: Child[], startTime: number, endTime: number): Child[] {
+  private filterByTimeRange(children: CargoChild[], startTime: number, endTime: number): CargoChild[] {
     return children.filter(({ isFolder, created }) => {
       if (isFolder) return true;
       if (!created) return false;
