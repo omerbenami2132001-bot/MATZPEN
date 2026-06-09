@@ -22,23 +22,36 @@ interface FileInfo {
   [key: string]: unknown;
 }
 
+interface MetadataSource {
+  process(fileId: string, requestId: string): Promise<Record<string, unknown>>;
+}
+
 interface HttpResponse {
   statusCode: number;
   body: Record<string, unknown>;
 }
 
+// אילו metadata sources נוספים לכל סוג API.
+// CargoMetadata תמיד רץ — זה רק למקורות נוספים.
+const METADATA_SOURCES: Record<string, MetadataSource[]> = {
+  default: [new Source1Metadata()],
+  // future:
+  // documents: [new Source1Metadata(), new AuditMetadata()],
+  // photos: [new Source1Metadata(), new AuditMetadata(), new GeoMetadata()],
+};
+
 export class AdapterService {
   private apiClient: ApiClient;
   private s3Service: S3Service;
   private cargoMetadata: CargoMetadata;
-  private source1Metadata: Source1Metadata;
+  private metadataSources: MetadataSource[];
   private jobStore: JobStore;
 
-  constructor(apiClient: ApiClient, s3Service: S3Service, jobStore: JobStore) {
+  constructor(apiClient: ApiClient, s3Service: S3Service, jobStore: JobStore, apiType = "default") {
     this.apiClient = apiClient;
     this.s3Service = s3Service;
     this.cargoMetadata = new CargoMetadata();
-    this.source1Metadata = new Source1Metadata();
+    this.metadataSources = METADATA_SOURCES[apiType] || METADATA_SOURCES.default;
     this.jobStore = jobStore;
   }
 
@@ -183,8 +196,10 @@ export class AdapterService {
 
       currentStep = "fetch_metadata";
       const cargoData = this.cargoMetadata.processCargo(fileInfo as Record<string, unknown>, requestId);
-      const source1Data = await this.source1Metadata.process(fileId, requestId);
-      const metadata = { ...cargoData, ...source1Data };
+      const additional = await Promise.all(
+        this.metadataSources.map((source) => source.process(fileId, requestId))
+      );
+      const metadata = Object.assign({}, cargoData, ...additional);
 
       currentStep = "build_s3_document";
       logger.log("INFO", requestId, STEPS.BUILD_S3_DOC, "Building S3 document", { fileId, metadataFields: Object.keys(metadata).length });
