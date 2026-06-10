@@ -15,10 +15,14 @@ const s3 = S3Service.getInstance();
 
 const GREEN = "\x1b[32m", RED = "\x1b[31m", RESET = "\x1b[0m", BOLD = "\x1b[1m";
 let passed = 0, failed = 0;
+const asyncTests: (() => Promise<void>)[] = [];
 
-function test(name: string, fn: () => void) {
-  try { fn(); passed++; console.log(`  ${GREEN}✓${RESET} ${name}`); }
-  catch (error: any) { failed++; console.log(`  ${RED}✗${RESET} ${name}\n    ${RED}${error.message}${RESET}`); }
+function test(name: string, fn: () => void | Promise<void>) {
+  const wrapped = async () => {
+    try { await fn(); passed++; console.log(`  ${GREEN}✓${RESET} ${name}`); }
+    catch (error: any) { failed++; console.log(`  ${RED}✗${RESET} ${name}\n    ${RED}${error.message}${RESET}`); }
+  };
+  asyncTests.push(wrapped);
 }
 function assert(c: boolean, m: string) { if (!c) throw new Error(m); }
 
@@ -142,8 +146,170 @@ test("rejects non-WKT format", () => { assertThrows(MetadataApi2Schema, { Positi
 test("rejects number Position", () => { assertThrows(MetadataApi2Schema, { Position: 123 }); });
 test("rejects empty string", () => { assertThrows(MetadataApi2Schema, { Position: "" }); });
 
-// Results
-console.log(`\n${BOLD}─────────────────────────────${RESET}`);
-console.log(`${BOLD}Results: ${GREEN}${passed} passed${RESET}, ${failed > 0 ? RED : GREEN}${failed} failed${RESET}`);
-console.log(`${BOLD}─────────────────────────────${RESET}\n`);
-process.exit(failed > 0 ? 1 : 0);
+// ============================================
+// CargoChildSchema — coerce
+// ============================================
+console.log(`\n${BOLD}CargoChildSchema coerce${RESET}`);
+test("id number → string", () => {
+  const result = validateOrThrow(CargoChildSchema, { id: 12345, name: "photo.png", isFolder: false });
+  assert(result.id === "12345", `expected "12345", got "${result.id}"`);
+  assert(typeof result.id === "string", "id should be string");
+});
+test("created string → number", () => {
+  const result = validateOrThrow(CargoChildSchema, { id: "f1", name: "photo.png", isFolder: false, created: "1716825600" });
+  assert(result.created === 1716825600, `expected 1716825600, got ${result.created}`);
+  assert(typeof result.created === "number", "created should be number");
+});
+test("id empty string fails min(1)", () => {
+  assertThrows(CargoChildSchema, { id: "", name: "photo.png", isFolder: false });
+});
+
+// ============================================
+// metadataPipeline
+// ============================================
+import { metadataPipeline } from "../../utils/normalizer";
+console.log(`\n${BOLD}metadataPipeline${RESET}`);
+test("validate + normalize + flatten", () => {
+  const result = metadataPipeline(
+    { id: "f1", name: "photo.png", isFolder: false },
+    "ex",
+    CargoChildSchema
+  );
+  assert(result.ex_id === "f1", "ex_id");
+  assert(result.ex_name === "photo.png", "ex_name");
+  assert(result.ex_isfolder === false, "ex_isfolder");
+});
+test("without schema (null)", () => {
+  const result = metadataPipeline({ hello: "World", count: 5 }, "ab", null);
+  assert(result.ab_hello === "World", "ab_hello");
+  assert(result.ab_count === 5, "ab_count");
+});
+test("normalizes keys", () => {
+  const result = metadataPipeline({ "Full Name": "John", "Created At": "test" }, "ex", null);
+  assert("ex_full_name" in result, "full_name normalized");
+  assert("ex_created_at" in result, "created_at normalized");
+});
+test("normalizes date values", () => {
+  const result = metadataPipeline({ created: 1716825600 }, "ex", null);
+  assert(result.ex_created === 1716825600000, `expected ms, got ${result.ex_created}`);
+});
+
+// ============================================
+// CargoChatMetadata — process logic
+// ============================================
+import { CargoChatMetadata } from "../../services/cargoChatMetadata";
+console.log(`\n${BOLD}CargoChatMetadata${RESET}`);
+
+function setupChatMetadata(): CargoChatMetadata {
+  const chat = new CargoChatMetadata();
+  const instance = chat as any;
+
+  instance.allRows = [
+    { date: "2026-06-01", time: "14:28:00", user: "john", content: "הנה התמונה", filename: "photo1.png" },
+    { date: "2026-06-01", time: "14:29:00", user: "john", content: "שלחתי", filename: "" },
+    { date: "2026-06-01", time: "14:30:00", user: "john", content: "ראית?", filename: "" },
+    { date: "2026-06-01", time: "14:31:00", user: "john", content: "עדכן אותי", filename: "" },
+    { date: "2026-06-01", time: "14:45:00", user: "jane", content: "תודה", filename: "" },
+    { date: "2026-06-01", time: "14:28:30", user: "jane", content: "מעניין", filename: "" },
+    { date: "2026-06-01", time: "15:00:00", user: "john", content: "הודעה מאוחרת", filename: "" },
+  ];
+
+  instance.fileMap = new Map([
+    ["photo1.png", { user: "john", datetime: new Date("2026-06-01T14:28:00") }],
+  ]);
+
+  return chat;
+}
+
+test("finds messages for matching file", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-001", "req-1", { name: "photo1.png" });
+  assert(result.em_user === "john", `user: ${result.em_user}`);
+  assert(result.em_message_count === 3, `count: ${result.em_message_count}, expected 3`);
+});
+
+test("only same user messages", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-001", "req-1", { name: "photo1.png" });
+  const messages = result.em_messages as any[];
+  const users = messages.map((msg: any) => msg.content);
+  assert(!users.includes("תודה"), "jane's message should not be included");
+  assert(!users.includes("מעניין"), "jane's message should not be included");
+});
+
+test("respects ±2 minute window", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-001", "req-1", { name: "photo1.png" });
+  const messages = result.em_messages as any[];
+  const contents = messages.map((msg: any) => msg.content);
+  // 14:28 ±2min = 14:26-14:30
+  assert(contents.includes("הנה התמונה"), "14:28 should be in window");
+  assert(contents.includes("שלחתי"), "14:29 should be in window");
+  assert(contents.includes("ראית?"), "14:30 should be in window");
+  assert(!contents.includes("הודעה מאוחרת"), "15:00 should be outside window");
+});
+
+test("edge of window — 2 min exactly", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-001", "req-1", { name: "photo1.png" });
+  const messages = result.em_messages as any[];
+  const contents = messages.map((msg: any) => msg.content);
+  // 14:28 + 2min = 14:30 — should be included (<=)
+  assert(contents.includes("ראית?"), "exactly 2 min should be included");
+  // 14:28 + 3min = 14:31 — should NOT be included
+  assert(!contents.includes("עדכן אותי"), "3 min should be outside window");
+});
+
+test("file not in Excel returns empty", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-002", "req-1", { name: "unknown.png" });
+  assert(Object.keys(result).length === 0, "should be empty");
+});
+
+test("no fileInfo returns empty", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-003", "req-1");
+  assert(Object.keys(result).length === 0, "should be empty");
+});
+
+test("empty filename returns empty", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-004", "req-1", { name: "" });
+  assert(Object.keys(result).length === 0, "should be empty");
+});
+
+test("metadata has correct prefix em_", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-001", "req-1", { name: "photo1.png" });
+  assert("em_user" in result, "em_user prefix");
+  assert("em_file_date" in result, "em_file_date prefix");
+  assert("em_messages" in result, "em_messages prefix");
+  assert("em_message_count" in result, "em_message_count prefix");
+});
+
+// ============================================
+// TIME_WINDOW_MINUTES constant
+// ============================================
+import { TIME_WINDOW_MINUTES, EXCEL_COLUMNS, CARGO_CHAT_PREFIX } from "../../utils/constants";
+console.log(`\n${BOLD}Chat constants${RESET}`);
+test("TIME_WINDOW_MINUTES is 2", () => assert(TIME_WINDOW_MINUTES === 2, `got ${TIME_WINDOW_MINUTES}`));
+test("CARGO_CHAT_PREFIX is em", () => assert(CARGO_CHAT_PREFIX === "em", `got ${CARGO_CHAT_PREFIX}`));
+test("EXCEL_COLUMNS has all fields", () => {
+  assert(EXCEL_COLUMNS.DATE === "תאריך", "DATE");
+  assert(EXCEL_COLUMNS.TIME === "שעה", "TIME");
+  assert(EXCEL_COLUMNS.USER === "שם משתמש", "USER");
+  assert(EXCEL_COLUMNS.CONTENT === "תוכן", "CONTENT");
+  assert(EXCEL_COLUMNS.FILENAME === "שם קובץ", "FILENAME");
+});
+
+// Run all tests (sync + async)
+(async () => {
+  for (const testFn of asyncTests) {
+    await testFn();
+  }
+
+  console.log(`\n${BOLD}─────────────────────────────${RESET}`);
+  console.log(`${BOLD}Results: ${GREEN}${passed} passed${RESET}, ${failed > 0 ? RED : GREEN}${failed} failed${RESET}`);
+  console.log(`${BOLD}─────────────────────────────${RESET}\n`);
+  process.exit(failed > 0 ? 1 : 0);
+})();

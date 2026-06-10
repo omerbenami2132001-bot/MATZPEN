@@ -20,7 +20,7 @@ export class Source1Metadata {
     this.prefix = METADATA_API_2_PREFIX;
   }
 
-  async process(fileId: string, requestId: string) {
+  async process(fileId: string, requestId: string, fileInfo?: Record<string, unknown>) {
     if (!this.url) {
       logger.log("WARN", requestId, STEPS.FETCH_METADATA, "Source1 API URL not configured, skipping");
       return {};
