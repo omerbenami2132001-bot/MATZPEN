@@ -24,7 +24,7 @@ export interface Job {
   startedAt: number;
   finishedAt: number | null;
   durationMs: number | null;
-  params: { startTime: number; endTime: number; recursive: boolean };
+  params: { startTime: number | null; endTime: number | null; recursive: boolean };
   progress: { totalProcessed: number; succeeded: number; failed: number };
   results: FileResult[];
   error: string | null;
@@ -45,7 +45,7 @@ export class JobStore {
     return JobStore.instance;
   }
 
-  create(requestId: string, folderId: string, params: { startTime: number; endTime: number; recursive: boolean }): Job {
+  create(requestId: string, folderId: string, params: { startTime: number | null; endTime: number | null; recursive: boolean }): Job {
     const job: Job = {
       requestId, folderId,
       status: JOB_STATUS.RUNNING,
@@ -92,7 +92,7 @@ export class JobStore {
     job.durationMs = job.finishedAt - job.startedAt;
   }
 
-  findRunning(folderId: string, startTime: number, endTime: number): string | null {
+  findRunning(folderId: string, startTime: number | null, endTime: number | null): string | null {
     for (const [requestId, job] of this.jobs) {
       if (job.status === JOB_STATUS.RUNNING && job.folderId === folderId &&
           job.params.startTime === startTime && job.params.endTime === endTime) {

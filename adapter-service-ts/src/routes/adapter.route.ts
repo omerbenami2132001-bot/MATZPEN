@@ -19,7 +19,7 @@ router.post("/download/:folderId", async (req: Request, res: Response) => {
 
 router.post("/chat/:folderId", async (req: Request, res: Response) => {
   const { statusCode, body } = service.handleIngest(
-    req.query as Record<string, string>,
+    { ...req.query as Record<string, string>, recursive: "true" },
     req.params as Record<string, string>,
     "chat"
   );

@@ -9,8 +9,9 @@ export class ApiClient {
     this.client = axios.create({
       baseURL,
       headers: {
-        "X-API-Key": apiKey,
-        "X-API-Name": apiName,
+        "x-api-key": apiKey,
+        "x-api-name": apiName,
+        "accept": "application/json",
       },
       timeout: timeoutMs,
     });
@@ -27,7 +28,13 @@ export class ApiClient {
     return ApiClient.instance;
   }
 
-  get<T = unknown>(url: string, options: AxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
+  private async delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async get<T = unknown>(url: string, options: AxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
+    await this.delay(1000);
+    console.log("REQUEST:", this.client.defaults.baseURL + url);
     return this.client.get<T>(url, options);
   }
 }

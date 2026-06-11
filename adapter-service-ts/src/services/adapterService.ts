@@ -67,8 +67,8 @@ export class AdapterService {
       const validatedQuery = validateOrThrow(AdapterRequestQuerySchema, query);
       const { folderId } = validateOrThrow(AdapterRequestParamsSchema, params);
 
-      const startTime = parseInt(validatedQuery.startTime, 10);
-      const endTime = parseInt(validatedQuery.endTime, 10);
+      const startTime = validatedQuery.startTime ? parseInt(validatedQuery.startTime, 10) : null;
+      const endTime = validatedQuery.endTime ? parseInt(validatedQuery.endTime, 10) : null;
       const recursive = validatedQuery.recursive.toLowerCase() === "true";
 
       const existingJobId = this.jobStore.findRunning(folderId, startTime, endTime);
@@ -106,7 +106,7 @@ export class AdapterService {
   // run — background job
   // ============================================
 
-  private async run(folderId: string, startTime: number, endTime: number, recursive: boolean, requestId: string, apiType: string): Promise<void> {
+  private async run(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string): Promise<void> {
     try {
       const sources = METADATA_SOURCES[apiType] || METADATA_SOURCES.default;
 
@@ -119,6 +119,7 @@ export class AdapterService {
         }
       }
 
+      console.log("DEBUG targetFolderId:", { original: folderId, target: targetFolderId });
       await this.processFolder(targetFolderId, startTime, endTime, recursive, requestId, apiType);
       this.jobStore.complete(requestId);
 
@@ -162,11 +163,15 @@ export class AdapterService {
   // processFolder — filter + process each child
   // ============================================
 
-  private async processFolder(folderId: string, startTime: number, endTime: number, recursive: boolean, requestId: string, apiType: string): Promise<void> {
+  private async processFolder(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string): Promise<void> {
     const children = await this.fetchFolder(folderId, requestId);
     if (!children) return;
 
+    console.log("DEBUG processFolder:", { folderId, childrenCount: children.length, children: children.map(({ id, name, isFolder, created }) => ({ id, name, isFolder, created })) });
+
     const filtered = this.filterByTimeRange(children, startTime, endTime);
+
+    console.log("DEBUG filtered:", { startTime, endTime, filteredCount: filtered.length });
 
     logger.log("INFO", requestId, STEPS.VALIDATE_CHILDREN, "Children filtered", {
       folderId,
@@ -217,8 +222,7 @@ export class AdapterService {
       const s3Document = buildS3Document({ fileInfo, fileBase64: base64, metadata });
 
       currentStep = "save_to_s3";
-      const fileDate = fileInfo.created ? new Date(fileInfo.created * 1000) : undefined;
-      const s3Key = await this.s3Service.save(s3Document, fileInfo.name, requestId, fileDate);
+      const s3Key = await this.s3Service.save(s3Document, fileInfo.name, requestId);
 
       currentStep = "build_kafka_msg";
       logger.log("INFO", requestId, STEPS.BUILD_KAFKA_MSG, "Building Kafka message", { fileId, s3Key });
@@ -246,7 +250,8 @@ export class AdapterService {
   // Private helpers
   // ============================================
 
-  private filterByTimeRange(children: CargoChild[], startTime: number, endTime: number): CargoChild[] {
+  private filterByTimeRange(children: CargoChild[], startTime: number | null, endTime: number | null): CargoChild[] {
+    if (!startTime || !endTime) return children;
     return children.filter(({ isFolder, created }) => {
       if (isFolder) return true;
       if (!created) return false;

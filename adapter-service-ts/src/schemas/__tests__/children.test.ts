@@ -52,6 +52,9 @@ test("rejects missing recursive", () => { assertThrows(AdapterRequestQuerySchema
 test("rejects invalid recursive", () => { assertThrows(AdapterRequestQuerySchema, { startTime: "1716825600", endTime: "1717430400", recursive: "maybe" }); });
 test("rejects start after end", () => { assertThrows(AdapterRequestQuerySchema, { startTime: "1717430400", endTime: "1716825600", recursive: "true" }); });
 test("rejects start equal end", () => { assertThrows(AdapterRequestQuerySchema, { startTime: "1716825600", endTime: "1716825600", recursive: "true" }); });
+test("valid without times", () => { validateOrThrow(AdapterRequestQuerySchema, { recursive: "true" }); });
+test("valid with only startTime", () => { validateOrThrow(AdapterRequestQuerySchema, { startTime: "123", recursive: "true" }); });
+test("valid with only endTime", () => { validateOrThrow(AdapterRequestQuerySchema, { endTime: "456", recursive: "true" }); });
 
 // AdapterRequestParamsSchema
 console.log(`\n${BOLD}AdapterRequestParamsSchema${RESET}`);
@@ -215,7 +218,7 @@ function setupChatMetadata(): CargoChatMetadata {
   ];
 
   instance.fileMap = new Map([
-    ["photo1.png", { user: "john", datetime: new Date("2026-06-01T14:28:00") }],
+    ["photo1", { user: "john", datetime: new Date("2026-06-01T14:28:00") }],
   ]);
 
   return chat;

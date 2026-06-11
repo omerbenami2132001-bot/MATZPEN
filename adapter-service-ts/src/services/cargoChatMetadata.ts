@@ -114,24 +114,37 @@ export class CargoChatMetadata {
     );
 
     const buffer = Buffer.from(response.data as ArrayBuffer);
-    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
+    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: true, defval: "" });
+
+    console.log("DEBUG Excel columns:", Object.keys(rows[0] || {}));
+    console.log("DEBUG Excel ALL rows:", JSON.stringify(rows, null, 2));
 
     for (const row of rows) {
-      const date = row[EXCEL_COLUMNS.DATE] || "";
-      const time = row[EXCEL_COLUMNS.TIME] || "";
-      const user = row[EXCEL_COLUMNS.USER] || "";
-      const content = row[EXCEL_COLUMNS.CONTENT] || "";
-      const filename = row[EXCEL_COLUMNS.FILENAME] || "";
+      const rawDate = row[EXCEL_COLUMNS.DATE];
+      const rawTime = row[EXCEL_COLUMNS.TIME];
+
+      const date = typeof rawDate === "number"
+        ? XLSX.SSF.format("yyyy-mm-dd", rawDate)
+        : String(rawDate);
+
+      const time = typeof rawTime === "number"
+        ? XLSX.SSF.format("hh:mm:ss", rawTime)
+        : String(rawTime);
+
+      const user = String(row[EXCEL_COLUMNS.USER] || "");
+      const content = String(row[EXCEL_COLUMNS.CONTENT] || "");
+      const filename = String(row[EXCEL_COLUMNS.FILENAME] || "").replace(/:/g, "-");
 
       const excelRow: ExcelRow = { date, time, user, content, filename };
       this.allRows.push(excelRow);
 
       if (filename) {
         const datetime = this.parseDateTime(date, time);
-        this.fileMap.set(filename, { user, datetime });
+        const nameWithoutExt = this.stripExtension(filename);
+        this.fileMap.set(nameWithoutExt, { user, datetime });
       }
     }
 
@@ -144,6 +157,11 @@ export class CargoChatMetadata {
     return new Date(`${date}T${time}`);
   }
 
+  private stripExtension(filename: string) {
+    const lastDot = filename.lastIndexOf(".");
+    return lastDot > 0 ? filename.substring(0, lastDot) : filename;
+  }
+
   private isWithinWindow(rowDate: string, rowTime: string, targetDatetime: Date) {
     const rowDatetime = this.parseDateTime(rowDate, rowTime);
     const diffMs = Math.abs(rowDatetime.getTime() - targetDatetime.getTime());
@@ -153,16 +171,23 @@ export class CargoChatMetadata {
 
   async process(fileId: string, requestId: string, fileInfo?: Record<string, unknown>) {
     const fileName = String(fileInfo?.name || "");
+    const fileNameWithoutExt = this.stripExtension(fileName);
 
-    if (!fileName) {
+    if (!fileNameWithoutExt) {
       logger.log("WARN", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: no filename, skipping", { fileId });
       return {};
     }
 
-    const attachment = this.fileMap.get(fileName);
+    const attachment = this.fileMap.get(fileNameWithoutExt);
+
+    console.log("DEBUG chat lookup:", {
+      searchingFor: fileNameWithoutExt,
+      cacheKeys: Array.from(this.fileMap.keys()),
+      found: !!attachment,
+    });
 
     if (!attachment) {
-      logger.log("WARN", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: file not found in Excel", { fileName });
+      logger.log("WARN", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: file not found in Excel", { fileName: fileNameWithoutExt });
       return {};
     }
 
