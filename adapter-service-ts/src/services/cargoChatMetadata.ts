@@ -16,6 +16,7 @@ interface ExcelRow {
   date: string;
   time: string;
   user: string;
+  displayName: string;
   content: string;
   filename: string;
 }
@@ -28,6 +29,8 @@ interface FileAttachment {
 interface ChatMessage {
   date: string;
   time: string;
+  user: string;
+  displayName: string;
   content: string;
 }
 
@@ -117,28 +120,20 @@ export class CargoChatMetadata {
     const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: true, defval: "" });
+    const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { raw: false, defval: "" });
 
     console.log("DEBUG Excel columns:", Object.keys(rows[0] || {}));
     console.log("DEBUG Excel ALL rows:", JSON.stringify(rows, null, 2));
 
     for (const row of rows) {
-      const rawDate = row[EXCEL_COLUMNS.DATE];
-      const rawTime = row[EXCEL_COLUMNS.TIME];
+      const date = row[EXCEL_COLUMNS.DATE] || "";
+      const time = row[EXCEL_COLUMNS.TIME] || "";
+      const user = row[EXCEL_COLUMNS.USER] || "";
+      const displayName = row[EXCEL_COLUMNS.DISPLAY_NAME] || "";
+      const content = row[EXCEL_COLUMNS.CONTENT] || "";
+      const filename = (row[EXCEL_COLUMNS.FILENAME] || "").replace(/:/g, "-");
 
-      const date = typeof rawDate === "number"
-        ? XLSX.SSF.format("yyyy-mm-dd", rawDate)
-        : String(rawDate);
-
-      const time = typeof rawTime === "number"
-        ? XLSX.SSF.format("hh:mm:ss", rawTime)
-        : String(rawTime);
-
-      const user = String(row[EXCEL_COLUMNS.USER] || "");
-      const content = String(row[EXCEL_COLUMNS.CONTENT] || "");
-      const filename = String(row[EXCEL_COLUMNS.FILENAME] || "").replace(/:/g, "-");
-
-      const excelRow: ExcelRow = { date, time, user, content, filename };
+      const excelRow: ExcelRow = { date, time, user, displayName, content, filename };
       this.allRows.push(excelRow);
 
       if (filename) {
@@ -198,7 +193,7 @@ export class CargoChatMetadata {
       .filter((row) =>
         row.user === user && this.isWithinWindow(row.date, row.time, datetime)
       )
-      .map(({ date, time, content }) => ({ date, time, content }));
+      .map(({ date, time, user, displayName, content }) => ({ date, time, user, displayName, content }));
 
     const metadata = {
       user,

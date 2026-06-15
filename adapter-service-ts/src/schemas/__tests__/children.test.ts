@@ -63,11 +63,11 @@ test("rejects empty", () => { assertThrows(AdapterRequestParamsSchema, { folderI
 
 // RawDataDocumentSchema
 console.log(`\n${BOLD}RawDataDocumentSchema${RESET}`);
-test("defaults to {}", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc" }); assert(JSON.stringify(r.metadata) === "{}", "default {}"); });
-test("with flat metadata", () => { validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc", metadata: { ex_category: "financial", ab_retention_days: 365 } }); });
-test("empty metadata", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc", metadata: {} }); assert(JSON.stringify(r.metadata) === "{}", "empty"); });
-test("rejects no origin_id", () => { assertThrows(RawDataDocumentSchema, { source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", image_base64: "abc" }); });
-test("rejects no image_base64", () => { assertThrows(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png" }); });
+test("defaults to {}", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת", image_base64: "abc" }); assert(JSON.stringify(r.metadata) === "{}", "default {}"); });
+test("with flat metadata", () => { validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת", image_base64: "abc", metadata: { ex_category: "financial", ab_retention_days: 365 } }); });
+test("empty metadata", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת", image_base64: "abc", metadata: {} }); assert(JSON.stringify(r.metadata) === "{}", "empty"); });
+test("rejects no origin_id", () => { assertThrows(RawDataDocumentSchema, { source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת", image_base64: "abc" }); });
+test("rejects no image_base64", () => { assertThrows(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת" }); });
 
 // KafkaMessageSchema
 console.log(`\n${BOLD}KafkaMessageSchema${RESET}`);
@@ -208,13 +208,13 @@ function setupChatMetadata(): CargoChatMetadata {
   const instance = chat as any;
 
   instance.allRows = [
-    { date: "2026-06-01", time: "14:28:00", user: "john", content: "הנה התמונה", filename: "photo1.png" },
-    { date: "2026-06-01", time: "14:29:00", user: "john", content: "שלחתי", filename: "" },
-    { date: "2026-06-01", time: "14:30:00", user: "john", content: "ראית?", filename: "" },
-    { date: "2026-06-01", time: "14:31:00", user: "john", content: "עדכן אותי", filename: "" },
-    { date: "2026-06-01", time: "14:45:00", user: "jane", content: "תודה", filename: "" },
-    { date: "2026-06-01", time: "14:28:30", user: "jane", content: "מעניין", filename: "" },
-    { date: "2026-06-01", time: "15:00:00", user: "john", content: "הודעה מאוחרת", filename: "" },
+    { date: "2026-06-01", time: "14:28:00", user: "john", displayName: "ג'ון", content: "הנה התמונה", filename: "photo1.png" },
+    { date: "2026-06-01", time: "14:29:00", user: "john", displayName: "ג'ון", content: "שלחתי", filename: "" },
+    { date: "2026-06-01", time: "14:30:00", user: "john", displayName: "ג'ון", content: "ראית?", filename: "" },
+    { date: "2026-06-01", time: "14:31:00", user: "john", displayName: "ג'ון", content: "עדכן אותי", filename: "" },
+    { date: "2026-06-01", time: "14:45:00", user: "jane", displayName: "ג'יין", content: "תודה", filename: "" },
+    { date: "2026-06-01", time: "14:28:30", user: "jane", displayName: "ג'יין", content: "מעניין", filename: "" },
+    { date: "2026-06-01", time: "15:00:00", user: "john", displayName: "ג'ון", content: "הודעה מאוחרת", filename: "" },
   ];
 
   instance.fileMap = new Map([
@@ -301,6 +301,7 @@ test("EXCEL_COLUMNS has all fields", () => {
   assert(EXCEL_COLUMNS.DATE === "תאריך", "DATE");
   assert(EXCEL_COLUMNS.TIME === "שעה", "TIME");
   assert(EXCEL_COLUMNS.USER === "שם משתמש", "USER");
+  assert(EXCEL_COLUMNS.DISPLAY_NAME === "שם תצוגה", "DISPLAY_NAME");
   assert(EXCEL_COLUMNS.CONTENT === "תוכן", "CONTENT");
   assert(EXCEL_COLUMNS.FILENAME === "שם קובץ", "FILENAME");
 });

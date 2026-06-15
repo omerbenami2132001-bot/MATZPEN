@@ -13,6 +13,9 @@ export class CargoMetadata {
 
     const result = metadataPipeline(childData, METADATA_API_1_PREFIX, CargoChildSchema);
 
+    // isFolder needed for Schema validation but not for S3/Kafka output
+    delete result[`${METADATA_API_1_PREFIX}_isfolder`];
+
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "Cargo metadata ready", {
       prefix: METADATA_API_1_PREFIX, fieldCount: Object.keys(result).length,
     });

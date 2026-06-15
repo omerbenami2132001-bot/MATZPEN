@@ -12,6 +12,7 @@ export const EXCEL_COLUMNS = {
   DATE: "תאריך",
   TIME: "שעה",
   USER: "שם משתמש",
+  DISPLAY_NAME: "שם תצוגה",
   CONTENT: "תוכן",
   FILENAME: "שם קובץ",
 };

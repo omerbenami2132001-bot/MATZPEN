@@ -20,6 +20,7 @@ export function buildS3Document({ fileInfo, fileBase64, metadata }: { fileInfo: 
     source_name: config.sourceName,
     insertion_time: new Date().toISOString(),
     original_file_type: extractFileType(fileInfo.name),
+    reality: "אמת",
     image_base64: fileBase64,
     metadata: metadata || {},
   };
@@ -31,7 +32,7 @@ export function buildKafkaMessage({ requestId, fileId, s3Key }: { requestId: str
   const message = {
     source: config.sourceName,
     path: s3Key,
-    bucket: config.s3.bucket,
+    bucket: config.s3.bucketName,
     message: `File ${fileId} processed and saved to S3`,
     request_id: requestId,
   };

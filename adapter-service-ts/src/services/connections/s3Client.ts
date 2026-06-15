@@ -19,7 +19,7 @@ export class S3Service {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
       },
     });
-    this.bucket = config.s3.bucket;
+    this.bucket = config.s3.bucketName;
   }
 
   static getInstance(): S3Service {

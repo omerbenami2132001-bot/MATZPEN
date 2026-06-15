@@ -9,7 +9,7 @@ export const config = {
     name: process.env.API_NAME,
   },
   s3: {
-    bucket: process.env.S3_BUCKET || "raw-data",
+    bucketName: process.env.S3_BUCKET_NAME || "raw-data",
     region: process.env.AWS_REGION || "us-east-1",
     endpoint: process.env.S3_ENDPOINT,
   },
