@@ -34,7 +34,6 @@ export class ApiClient {
 
   async get<T = unknown>(url: string, options: AxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
     await this.delay(1000);
-    console.log("REQUEST:", this.client.defaults.baseURL + url);
     return this.client.get<T>(url, options);
   }
 }

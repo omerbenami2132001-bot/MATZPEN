@@ -2,16 +2,11 @@ import { RawDataDocumentSchema, KafkaMessageSchema } from "../schemas";
 import { validateOrThrow } from "./validation";
 import { config } from "./config";
 import { KafkaService } from "../services/connections/kafkaService";
+import { FileInfo } from "../types";
 
 export function extractFileType(fileName: string) {
   const parts = fileName.split(".");
   return parts.length > 1 ? parts.pop()!.toLowerCase() : "unknown";
-}
-
-interface FileInfo {
-  id: string;
-  name: string;
-  [key: string]: unknown;
 }
 
 export function buildS3Document(fileInfo: FileInfo, fileBase64: string, metadata: Record<string, unknown>) {
@@ -25,7 +20,7 @@ export function buildS3Document(fileInfo: FileInfo, fileBase64: string, metadata
     metadata: metadata || {},
   };
 
-  return validateOrThrow(RawDataDocumentSchema, doc) as unknown as Record<string, unknown>;
+  return validateOrThrow(RawDataDocumentSchema, doc) as Record<string, unknown>;
 }
 
 export function buildKafkaMessage(requestId: string, fileId: string, s3Key: string) {
@@ -37,7 +32,7 @@ export function buildKafkaMessage(requestId: string, fileId: string, s3Key: stri
     request_id: requestId,
   };
 
-  return validateOrThrow(KafkaMessageSchema, message) as unknown as Record<string, unknown>;
+  return validateOrThrow(KafkaMessageSchema, message) as Record<string, unknown>;
 }
 
 export async function publishToKafka(message: Record<string, unknown>, requestId: string): Promise<void> {

@@ -3,6 +3,7 @@
 
 import { FolderResponseSchema, AdapterRequestQuerySchema, AdapterRequestParamsSchema, CargoChild } from "../schemas";
 import { validateOrThrow, buildS3Document, buildKafkaMessage, publishToKafka, logger, withRetry, config } from "../utils";
+import { API_TYPES } from "../utils/constants";
 import { STEPS } from "../utils/logger";
 import { ApiClient } from "./connections/httpClient";
 import { S3Service } from "./connections/s3Client";
@@ -12,32 +13,14 @@ import { CargoChatMetadata } from "./cargoChatMetadata";
 import { JobStore } from "./jobStore";
 import { ErrorHandler } from "../utils/errorHandler";
 import { ValidationError } from "../errors";
+import { FileInfo, MetadataSource, HttpResponse } from "../types";
 import { v4 as uuidv4 } from "uuid";
-
-interface FileInfo {
-  id: string;
-  name: string;
-  owner?: string;
-  description?: string;
-  created?: number;
-  [key: string]: unknown;
-}
-
-interface MetadataSource {
-  prepare?(folderId: string, requestId: string): Promise<string | void>;
-  process(fileId: string, requestId: string, fileInfo?: Record<string, unknown>): Promise<Record<string, unknown>>;
-}
-
-interface HttpResponse {
-  statusCode: number;
-  body: Record<string, unknown>;
-}
 
 // אילו metadata sources נוספים לכל סוג API.
 // CargoMetadata תמיד רץ — זה רק למקורות נוספים.
 const METADATA_SOURCES: Record<string, MetadataSource[]> = {
-  default: [new Source1Metadata()],
-  chat: [new CargoChatMetadata()],
+  [API_TYPES.DEFAULT]: [new Source1Metadata()],
+  [API_TYPES.CHAT]: [new CargoChatMetadata()],
 };
 
 export class AdapterService {
@@ -57,7 +40,7 @@ export class AdapterService {
   // handleIngest — entry point for POST /download/:folderId
   // ============================================
 
-  handleIngest(query: Record<string, string>, params: Record<string, string>, apiType = "default"): HttpResponse {
+  handleIngest(query: Record<string, string>, params: Record<string, string>, apiType: string = API_TYPES.DEFAULT): HttpResponse {
     const requestId = uuidv4();
     logger.log("INFO", requestId, STEPS.HTTP_REQUEST, "Request received");
 
@@ -108,7 +91,7 @@ export class AdapterService {
 
   private async run(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string): Promise<void> {
     try {
-      const sources = METADATA_SOURCES[apiType] || METADATA_SOURCES.default;
+      const sources = METADATA_SOURCES[apiType] || METADATA_SOURCES[API_TYPES.DEFAULT];
 
       // prepare — הורדת Excel וכו'. אם מחזיר folderId חדש, משתמשים בו
       let targetFolderId = folderId;
@@ -119,7 +102,6 @@ export class AdapterService {
         }
       }
 
-      console.log("DEBUG targetFolderId:", { original: folderId, target: targetFolderId });
       await this.processFolder(targetFolderId, startTime, endTime, recursive, requestId, apiType);
       this.jobStore.complete(requestId);
 
@@ -167,11 +149,9 @@ export class AdapterService {
     const children = await this.fetchFolder(folderId, requestId);
     if (!children) return;
 
-    console.log("DEBUG processFolder:", { folderId, childrenCount: children.length, children: children.map(({ id, name, isFolder, created }) => ({ id, name, isFolder, created })) });
 
     const filtered = this.filterByTimeRange(children, startTime, endTime);
 
-    console.log("DEBUG filtered:", { startTime, endTime, filteredCount: filtered.length });
 
     logger.log("INFO", requestId, STEPS.VALIDATE_CHILDREN, "Children filtered", {
       folderId,
@@ -211,7 +191,7 @@ export class AdapterService {
 
       currentStep = "fetch_metadata";
       const cargoData = this.cargoMetadata.processCargo(fileInfo as Record<string, unknown>, requestId);
-      const sources = METADATA_SOURCES[apiType] || METADATA_SOURCES.default;
+      const sources = METADATA_SOURCES[apiType] || METADATA_SOURCES[API_TYPES.DEFAULT];
       const additional = await Promise.all(
         sources.map((source) => source.process(fileId, requestId, fileInfo as Record<string, unknown>))
       );

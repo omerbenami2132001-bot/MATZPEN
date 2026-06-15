@@ -50,7 +50,8 @@ export class CargoChatMetadata {
       { retries: 3, delayMs: 1000, label: "scan root folder", requestId }
     );
 
-    const rootChildren = (rootResponse.data as any).children || [];
+    const rootData = rootResponse.data as { children?: { id: string; name: string; isFolder: boolean }[] };
+    const rootChildren = rootData.children || [];
     const excelFolder = rootChildren.find((child: any) => child.name === EXCEL_FOLDER_NAME && child.isFolder);
     const filesFolder = rootChildren.find((child: any) => child.name === FILES_FOLDER_NAME && child.isFolder);
 
@@ -92,7 +93,8 @@ export class CargoChatMetadata {
       { retries: 3, delayMs: 1000, label: `scan excel folder ${folderId}`, requestId }
     );
 
-    const children = (response.data as any).children || [];
+    const responseData = response.data as { children?: { id: string; name: string; isFolder: boolean }[] };
+    const children = responseData.children || [];
 
     for (const child of children) {
       if (child.isFolder) {
@@ -122,8 +124,6 @@ export class CargoChatMetadata {
     const sheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { raw: false, defval: "" });
 
-    console.log("DEBUG Excel columns:", Object.keys(rows[0] || {}));
-    console.log("DEBUG Excel ALL rows:", JSON.stringify(rows, null, 2));
 
     for (const row of rows) {
       const date = row[EXCEL_COLUMNS.DATE] || "";
@@ -174,12 +174,6 @@ export class CargoChatMetadata {
     }
 
     const attachment = this.fileMap.get(fileNameWithoutExt);
-
-    console.log("DEBUG chat lookup:", {
-      searchingFor: fileNameWithoutExt,
-      cacheKeys: Array.from(this.fileMap.keys()),
-      found: !!attachment,
-    });
 
     if (!attachment) {
       logger.log("WARN", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: file not found in Excel", { fileName: fileNameWithoutExt });

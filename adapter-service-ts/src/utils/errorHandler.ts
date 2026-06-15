@@ -9,9 +9,17 @@ interface ClassifiedError {
   message: string;
 }
 
+interface AxiosErrorLike {
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+}
+
 export class ErrorHandler {
   static classify(error: Error, step: string): ClassifiedError {
-    const httpStatus = (error as any).response?.status || null;
+    const axiosError = error as AxiosErrorLike;
+    const httpStatus = axiosError.response?.status || null;
     const statusText = httpStatus ? (http.STATUS_CODES[httpStatus] || null) : null;
 
     let errorType: string;
@@ -29,6 +37,7 @@ export class ErrorHandler {
 
   static buildErrorData(error: Error, step: string, context: Record<string, unknown> = {}): Record<string, unknown> {
     const { errorType, httpStatus, statusText } = ErrorHandler.classify(error, step);
+    const axiosError = error as AxiosErrorLike;
 
     return {
       errorType, httpStatus, statusText,
@@ -36,7 +45,7 @@ export class ErrorHandler {
       message: error.message,
       ...context,
       ...(error instanceof ValidationError ? { validationErrors: error.validationErrors } : {}),
-      ...((error as any).response?.data ? { httpData: (error as any).response.data } : {}),
+      ...(axiosError.response?.data ? { httpData: axiosError.response.data } : {}),
     };
   }
 

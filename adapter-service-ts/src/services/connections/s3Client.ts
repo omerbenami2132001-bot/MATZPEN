@@ -64,10 +64,11 @@ export class S3Service {
       { retries: 3, delayMs: 1000, label: `S3 upload ${s3Key}`, requestId }
     );
 
+    const doc = document as { origin_id?: string; original_file_type?: string };
     logger.log("INFO", requestId, STEPS.SAVE_S3, "Document saved to S3", {
       bucket: this.bucket, s3Key,
-      originId: (document as any).origin_id,
-      fileType: (document as any).original_file_type,
+      originId: doc.origin_id,
+      fileType: doc.original_file_type,
     });
 
     return s3Key;
