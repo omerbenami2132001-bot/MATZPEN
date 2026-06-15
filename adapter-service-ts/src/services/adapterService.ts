@@ -219,14 +219,14 @@ export class AdapterService {
 
       currentStep = "build_s3_document";
       logger.log("INFO", requestId, STEPS.BUILD_S3_DOC, "Building S3 document", { fileId, metadataFields: Object.keys(metadata).length });
-      const s3Document = buildS3Document({ fileInfo, fileBase64: base64, metadata });
+      const s3Document = buildS3Document(fileInfo, base64, metadata);
 
       currentStep = "save_to_s3";
       const s3Key = await this.s3Service.save(s3Document, fileInfo.name, requestId);
 
       currentStep = "build_kafka_msg";
       logger.log("INFO", requestId, STEPS.BUILD_KAFKA_MSG, "Building Kafka message", { fileId, s3Key });
-      const kafkaMessage = buildKafkaMessage({ requestId, fileId, s3Key });
+      const kafkaMessage = buildKafkaMessage(requestId, fileId, s3Key);
 
       currentStep = "kafka_produce";
       await publishToKafka(kafkaMessage, requestId);

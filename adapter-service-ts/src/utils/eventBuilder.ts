@@ -3,7 +3,7 @@ import { validateOrThrow } from "./validation";
 import { config } from "./config";
 import { KafkaService } from "../services/connections/kafkaService";
 
-export function extractFileType(fileName: string): string {
+export function extractFileType(fileName: string) {
   const parts = fileName.split(".");
   return parts.length > 1 ? parts.pop()!.toLowerCase() : "unknown";
 }
@@ -14,7 +14,7 @@ interface FileInfo {
   [key: string]: unknown;
 }
 
-export function buildS3Document({ fileInfo, fileBase64, metadata }: { fileInfo: FileInfo; fileBase64: string; metadata: Record<string, unknown> }): Record<string, unknown> {
+export function buildS3Document(fileInfo: FileInfo, fileBase64: string, metadata: Record<string, unknown>) {
   const doc = {
     origin_id: fileInfo.id,
     source_name: config.sourceName,
@@ -28,7 +28,7 @@ export function buildS3Document({ fileInfo, fileBase64, metadata }: { fileInfo: 
   return validateOrThrow(RawDataDocumentSchema, doc) as unknown as Record<string, unknown>;
 }
 
-export function buildKafkaMessage({ requestId, fileId, s3Key }: { requestId: string; fileId: string; s3Key: string }): Record<string, unknown> {
+export function buildKafkaMessage(requestId: string, fileId: string, s3Key: string) {
   const message = {
     source: config.sourceName,
     path: s3Key,
