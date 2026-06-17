@@ -4,12 +4,12 @@ import { config } from "./config";
 import { KafkaService } from "../services/connections/kafkaService";
 import { FileInfo } from "../types";
 
-export function extractFileType(fileName: string) {
+export const extractFileType = (fileName: string) => {
   const parts = fileName.split(".");
   return parts.length > 1 ? parts.pop()!.toLowerCase() : "unknown";
 }
 
-export function buildS3Document(fileInfo: FileInfo, fileBase64: string, metadata: Record<string, unknown>) {
+export const buildS3Document = (fileInfo: FileInfo, fileBase64: string, metadata: Record<string, unknown>) => {
   const doc = {
     origin_id: fileInfo.id,
     source_name: config.sourceName,
@@ -23,7 +23,7 @@ export function buildS3Document(fileInfo: FileInfo, fileBase64: string, metadata
   return validateOrThrow(RawDataDocumentSchema, doc) as Record<string, unknown>;
 }
 
-export function buildKafkaMessage(requestId: string, fileId: string, s3Key: string) {
+export const buildKafkaMessage = (requestId: string, fileId: string, s3Key: string) => {
   const message = {
     source: config.sourceName,
     path: s3Key,

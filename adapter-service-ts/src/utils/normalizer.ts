@@ -9,7 +9,7 @@ import { validateOrThrow } from "./validation";
  * "file--name" → "file_name"
  * "isFolder" → "isfolder"
  */
-export function normalizeFieldName(name: string) {
+export const normalizeFieldName = (name: string) => {
   return name
     .toLowerCase()
     .trim()
@@ -28,7 +28,7 @@ export function normalizeFieldName(name: string) {
  * 1.23123134 → false (float, not a timestamp)
  * "hello" → false
  */
-export function isDateLike(value: unknown) {
+export const isDateLike = (value: unknown) => {
   if (typeof value === "number") {
     if (!Number.isInteger(value)) return false;
     const digits = String(value).length;
@@ -50,7 +50,7 @@ export function isDateLike(value: unknown) {
  * 1716825600000 → 1716825600000 (already ms)
  * "2026-05-28T14:30:00Z" → 1780063800000
  */
-export function convertToUnixMs(value: unknown) {
+export const convertToUnixMs = (value: unknown) => {
   if (typeof value === "number") {
     if (!Number.isInteger(value)) return value;
     const digits = String(value).length;
@@ -66,7 +66,7 @@ export function convertToUnixMs(value: unknown) {
   return value;
 }
 
-export function normalizeValue(value: unknown) {
+export const normalizeValue = (value: unknown) => {
   if (value === null || value === undefined) return null;
   if (isDateLike(value)) return convertToUnixMs(value);
   if (typeof value === "string") return value.trim();
@@ -113,7 +113,7 @@ export function normalizeObject(obj: Record<string, unknown>): Record<string, un
  * flattenWithPrefix({ id: "1", name: "test" }, "ex")
  * → { ex_id: "1", ex_name: "test" }
  */
-export function flattenWithPrefix(data: Record<string, unknown>, prefix: string) {
+export const flattenWithPrefix = (data: Record<string, unknown>, prefix: string) => {
   return Object.fromEntries(
     Object.entries(data).map(([key, value]) => [`${prefix}_${key}`, value])
   );
@@ -124,7 +124,7 @@ export function flattenWithPrefix(data: Record<string, unknown>, prefix: string)
  * metadataPipeline({ Position: "POINT(...)" }, "ab", MetadataApi2Schema)
  * → { ab_position: "POINT(...)" }
  */
-export function metadataPipeline(data: Record<string, unknown>, prefix: string, schema: ZodSchema | null) {
+export const metadataPipeline = (data: Record<string, unknown>, prefix: string, schema: ZodSchema | null) => {
   let validated = data;
   if (schema) {
     validated = validateOrThrow(schema, data) as Record<string, unknown>;

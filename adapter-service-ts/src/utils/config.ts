@@ -9,7 +9,7 @@ export const config = {
     name: process.env.API_NAME,
   },
   s3: {
-    bucketName: process.env.S3_BUCKET_NAME || "raw-data",
+    bucketName: process.env.S3_RAW_BUCKET_NAME || "raw-data",
     region: process.env.AWS_REGION || "us-east-1",
     endpoint: process.env.S3_ENDPOINT,
   },
@@ -24,7 +24,7 @@ export const config = {
   },
 };
 
-export function validateConfig() {
+export const validateConfig = () => {
   const missing: string[] = [];
 
   if (!config.api.baseUrl) missing.push("API_BASE_URL");

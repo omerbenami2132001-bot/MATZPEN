@@ -10,7 +10,7 @@
  * fromJson({ data: { a: 1, b: 2 }, audit: { x: 1 } }, ["data*"])
  * → { a: 1, b: 2 }
  */
-export function fromJson(responseData: Record<string, unknown>, fields: string[]) {
+export const fromJson = (responseData: Record<string, unknown>, fields: string[]) => {
   return fields.reduce((extractedFields, fieldSpec) => {
     if (fieldSpec === "*") {
       return { ...extractedFields, ...responseData };

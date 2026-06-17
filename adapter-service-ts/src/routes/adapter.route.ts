@@ -1,13 +1,21 @@
 import express, { Request, Response, NextFunction } from "express";
 import { AdapterService, ApiClient, S3Service, JobStore } from "../services";
+import { Orchestrator } from "../services/orchestrator";
+import { FileDownloader, MetadataCollector, Publisher } from "../services/pipeline";
 import { API_TYPES } from "../utils/constants";
 
+const apiClient = ApiClient.getInstance();
+const s3Service = S3Service.getInstance();
+const jobStore = JobStore.getInstance();
+
+const downloader = new FileDownloader(apiClient);
+const metadataCollector = new MetadataCollector();
+const publisher = new Publisher(s3Service);
+const orchestrator = new Orchestrator(apiClient, jobStore, downloader, metadataCollector, publisher);
+
+const service = new AdapterService(jobStore, orchestrator);
+
 const router = express.Router();
-const service = new AdapterService(
-  ApiClient.getInstance(),
-  S3Service.getInstance(),
-  JobStore.getInstance()
-);
 
 router.post("/download/:folderId", async (req: Request, res: Response, next: NextFunction) => {
   try {

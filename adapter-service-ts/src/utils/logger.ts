@@ -1,4 +1,4 @@
-function formatLog(level: string, requestId: string, step: string, message: string, data?: unknown): string {
+const formatLog = (level: string, requestId: string, step: string, message: string, data?: unknown): string => {
   const entry: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
     level,
@@ -22,7 +22,7 @@ function formatLog(level: string, requestId: string, step: string, message: stri
   return JSON.stringify(entry);
 }
 
-export function log(level: string, requestId: string, step: string, message: string, data?: unknown): void {
+export const log = (level: string, requestId: string, step: string, message: string, data?: unknown): void => {
   const output = formatLog(level, requestId, step, message, data);
 
   if (level === "ERROR") {
@@ -32,16 +32,23 @@ export function log(level: string, requestId: string, step: string, message: str
   }
 }
 
-export const STEPS = {
-  HTTP_REQUEST: "http_request",
-  VALIDATE_INPUT: "validate_input",
-  COLLECT_FILES: "collect_files",
-  VALIDATE_CHILDREN: "validate_children",
-  CONVERT_FILE: "convert_file",
-  FETCH_METADATA: "fetch_metadata",
-  BUILD_S3_DOC: "build_s3_doc",
-  SAVE_S3: "save_s3",
-  BUILD_KAFKA_MSG: "build_kafka_msg",
-  KAFKA_PRODUCE: "kafka_produce",
-  HTTP_RESPONSE: "http_response",
-} as const;
+export enum STEPS {
+  HTTP_REQUEST = "http_request",
+  VALIDATE_INPUT = "validate_input",
+  COLLECT_FILES = "collect_files",
+  VALIDATE_CHILDREN = "validate_children",
+  CONVERT_FILE = "convert_file",
+  FETCH_METADATA = "fetch_metadata",
+  BUILD_S3_DOC = "build_s3_doc",
+  SAVE_S3 = "save_s3",
+  BUILD_KAFKA_MSG = "build_kafka_msg",
+  KAFKA_PRODUCE = "kafka_produce",
+  HTTP_RESPONSE = "http_response",
+}
+
+export enum PROCESS_FILE_STEP {
+  UNKNOWN = "unknown",
+  DOWNLOAD = "download",
+  FETCH_METADATA = "fetch_metadata",
+  PUBLISH = "publish",
+}
