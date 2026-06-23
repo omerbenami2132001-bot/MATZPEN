@@ -1,5 +1,4 @@
 import { Kafka, Producer } from "kafkajs";
-import fs from "fs";
 import * as logger from "../../utils/logger";
 import { STEPS } from "../../utils/logger";
 import { config } from "../../utils/config";
@@ -26,11 +25,11 @@ export class KafkaService {
     if (this.connected) return;
 
     const brokers = config.kafka.brokers;
-    const certPath = config.kafka.certPath;
-    const keyPath = config.kafka.keyPath;
+    const cert = config.kafka.cert;
+    const key = config.kafka.key;
 
     if (!brokers) {
-      logger.log("WARN", "system", STEPS.KAFKA_PRODUCE, "KAFKA_PRODUCER_BROKERS not set, Kafka disabled");
+      logger.log("WARN", "system", STEPS.KAFKA_PRODUCE, "KAFKA_PRODUCER_BROKERS_FLIX not set, Kafka disabled");
       return;
     }
 
@@ -39,10 +38,10 @@ export class KafkaService {
       brokers: brokers.split(","),
     };
 
-    if (certPath && keyPath) {
+    if (cert && key) {
       kafkaConfig.ssl = {
-        cert: fs.readFileSync(certPath, "utf-8"),
-        key: fs.readFileSync(keyPath, "utf-8"),
+        cert,
+        key,
         rejectUnauthorized: false,
       };
     }
@@ -55,7 +54,7 @@ export class KafkaService {
     this.connected = true;
 
     logger.log("INFO", "system", STEPS.KAFKA_PRODUCE, "Kafka producer connected", {
-      brokers: kafkaConfig.brokers, topic: this.topic, ssl: !!(certPath && keyPath),
+      brokers: kafkaConfig.brokers, topic: this.topic, ssl: !!(cert && key),
     });
   }
 

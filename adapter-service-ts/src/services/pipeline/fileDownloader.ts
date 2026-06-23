@@ -1,4 +1,3 @@
-// FileDownloader — מוריד קובץ מ-API ומחזיר Base64.
 import * as logger from "../../utils/logger";
 import { STEPS } from "../../utils/logger";
 import { withRetry } from "../../utils/retry";

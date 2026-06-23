@@ -1,4 +1,3 @@
-// CargoMetadata — מעבד metadata מ-child data שכבר בזיכרון (בלי HTTP).
 import * as logger from "../utils/logger";
 import { STEPS } from "../utils/logger";
 import { metadataPipeline } from "../utils/normalizer";
@@ -13,7 +12,6 @@ export class CargoMetadata {
 
     const result = metadataPipeline(childData, METADATA_API_1_PREFIX, CargoChildSchema);
 
-    // isFolder needed for Schema validation but not for S3/Kafka output
     delete result[`${METADATA_API_1_PREFIX}_isfolder`];
 
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "Cargo metadata ready", {

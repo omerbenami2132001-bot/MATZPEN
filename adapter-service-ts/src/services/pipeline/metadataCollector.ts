@@ -1,14 +1,12 @@
-// MetadataCollector — אוסף metadata מ-cargo + metadata sources.
 import { CargoMetadata } from "../cargoMetadata";
 import { Source1Metadata } from "../source1Metadata";
 import { CargoChatMetadata } from "../cargoChatMetadata";
 import { API_TYPES } from "../../utils/constants";
 import { MetadataSource, FileInfo } from "../../types";
+import { metadataClient } from "../apiClients";
 
-// אילו metadata sources נוספים לכל סוג API.
-// CargoMetadata תמיד רץ — זה רק למקורות נוספים.
 export const METADATA_SOURCES: Record<string, MetadataSource[]> = {
-  [API_TYPES.DEFAULT]: [new Source1Metadata()],
+  [API_TYPES.DEFAULT]: [new Source1Metadata(metadataClient)],
   [API_TYPES.CHAT]: [new CargoChatMetadata()],
 };
 

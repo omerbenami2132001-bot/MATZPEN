@@ -1,6 +1,3 @@
-// CargoChatMetadata — שולף metadata מאקסל.
-// prepare: סורק תיקיית excel, מוריד ופרסר xlsx, שומר ב-cache.
-// process: מחפש ב-cache לפי שם קובץ + חלון זמן.
 import * as XLSX from "xlsx";
 import * as logger from "../utils/logger";
 import { STEPS } from "../utils/logger";
@@ -10,7 +7,7 @@ import {
   TIME_WINDOW_MINUTES, CARGO_CHAT_PREFIX,
   EXCEL_FOLDER_NAME, FILES_FOLDER_NAME, EXCEL_COLUMNS,
 } from "../utils/constants";
-import { ApiClient } from "./connections/httpClient";
+import { cargoClient } from "./apiClients";
 
 interface ExcelRow {
   date: string;
@@ -19,11 +16,13 @@ interface ExcelRow {
   displayName: string;
   content: string;
   filename: string;
+  excelName: string;
 }
 
 interface FileAttachment {
   user: string;
   datetime: Date;
+  excelName: string;
 }
 
 interface ChatMessage {
@@ -42,11 +41,9 @@ export class CargoChatMetadata {
   async prepare(folderId: string, requestId: string) {
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: scanning for Excel folder", { folderId });
 
-    const apiClient = ApiClient.getInstance();
 
-    // סריקת תיקיית root → מציאת "excel" ו-"files sent"
     const rootResponse = await withRetry(
-      () => apiClient.get(`/folders/${folderId}`),
+      () => cargoClient.get(`/folders/${folderId}`),
       { retries: 3, delayMs: 1000, label: "scan root folder", requestId }
     );
 
@@ -64,14 +61,12 @@ export class CargoChatMetadata {
       this.filesFolderId = String(filesFolder.id);
     }
 
-    // סריקה רקורסיבית של תיקיית excel → מציאת כל xlsx
     const xlsxFiles = await this.findXlsxFiles(excelFolder.id, requestId);
 
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: found xlsx files", {
       count: xlsxFiles.length,
     });
 
-    // הורדה ופרסור של כל xlsx
     for (const xlsxFile of xlsxFiles) {
       await this.downloadAndParseExcel(xlsxFile.id, xlsxFile.name, requestId);
     }
@@ -85,11 +80,10 @@ export class CargoChatMetadata {
   }
 
   private async findXlsxFiles(folderId: string, requestId: string): Promise<{ id: string; name: string }[]> {
-    const apiClient = ApiClient.getInstance();
     const xlsxFiles: { id: string; name: string }[] = [];
 
     const response = await withRetry(
-      () => apiClient.get(`/folders/${folderId}`),
+      () => cargoClient.get(`/folders/${folderId}`),
       { retries: 3, delayMs: 1000, label: `scan excel folder ${folderId}`, requestId }
     );
 
@@ -109,12 +103,11 @@ export class CargoChatMetadata {
   }
 
   private async downloadAndParseExcel(fileId: string, fileName: string, requestId: string) {
-    const apiClient = ApiClient.getInstance();
 
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: downloading Excel", { fileId, fileName });
 
     const response = await withRetry(
-      () => apiClient.get(`/files/${fileId}/download`, { responseType: "arraybuffer" }),
+      () => cargoClient.get(`/files/${fileId}/download`, { responseType: "arraybuffer" }),
       { retries: 3, delayMs: 1000, label: `download excel ${fileId}`, requestId }
     );
 
@@ -133,13 +126,13 @@ export class CargoChatMetadata {
       const content = row[EXCEL_COLUMNS.CONTENT] || "";
       const filename = (row[EXCEL_COLUMNS.FILENAME] || "").replace(/:/g, "-");
 
-      const excelRow: ExcelRow = { date, time, user, displayName, content, filename };
+      const excelRow: ExcelRow = { date, time, user, displayName, content, filename, excelName: this.stripExtension(fileName) };
       this.allRows.push(excelRow);
 
       if (filename) {
         const datetime = this.parseDateTime(date, time);
         const nameWithoutExt = this.stripExtension(filename);
-        this.fileMap.set(nameWithoutExt, { user, datetime });
+        this.fileMap.set(nameWithoutExt, { user, datetime, excelName: this.stripExtension(fileName) });
       }
     }
 
@@ -180,12 +173,13 @@ export class CargoChatMetadata {
       return {};
     }
 
-    const { user, datetime } = attachment;
+    const { user, datetime, excelName } = attachment;
 
-    // חיפוש כל ההודעות מאותו user בחלון ±2 דקות
     const messages: ChatMessage[] = this.allRows
       .filter((row) =>
-        row.user === user && this.isWithinWindow(row.date, row.time, datetime)
+        row.user === user &&
+        row.content.trim() !== "" &&
+        this.isWithinWindow(row.date, row.time, datetime)
       )
       .map(({ date, time, user, displayName, content }) => ({ date, time, user, displayName, content }));
 
@@ -194,6 +188,7 @@ export class CargoChatMetadata {
       file_date: datetime.toISOString(),
       message_count: messages.length,
       messages,
+      chat_group_name: excelName,
     };
 
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: metadata ready", {

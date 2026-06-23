@@ -1,15 +1,14 @@
-// API Types
 export enum API_TYPES {
   DEFAULT = "default",
   CHAT = "chat",
 }
 
-// Pure constants — don't change between environments
 export const METADATA_API_1_PREFIX = "ex";
 export const METADATA_API_2_PREFIX = "ab";
-export const METADATA_API_2_FIELDS = ["*"];
+export const METADATA_API_2_FIELDS = ["event.geometries"];
 
-// CargoChatMetadata
+export const ALLOWED_IMAGE_TYPES = ["png", "jpg", "jpeg", "gif", "webp", "bmp"];
+
 export const TIME_WINDOW_MINUTES = 2;
 export const CARGO_CHAT_PREFIX = "em";
 export const EXCEL_FOLDER_NAME = "excels";

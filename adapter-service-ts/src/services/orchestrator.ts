@@ -1,12 +1,12 @@
-// Orchestrator — מנהל את זרימת העיבוד: folder → files → pipeline.
 import { FolderResponseSchema, CargoChild } from "../schemas";
 import { validateOrThrow, logger, withRetry, config } from "../utils";
-import { API_TYPES } from "../utils/constants";
+import { ALLOWED_IMAGE_TYPES } from "../utils/constants";
+import { extractFileType } from "../utils/eventBuilder";
 import { STEPS, PROCESS_FILE_STEP } from "../utils/logger";
 import { ApiClient } from "./connections/httpClient";
 import { JobStore } from "./jobStore";
 import { ErrorHandler } from "../utils/errorHandler";
-import { FileDownloader, MetadataCollector, Publisher, METADATA_SOURCES } from "./pipeline";
+import { FileDownloader, MetadataCollector, Publisher } from "./pipeline";
 import { FileInfo } from "../types";
 
 export class Orchestrator {
@@ -24,15 +24,11 @@ export class Orchestrator {
     this.publisher = publisher;
   }
 
-  // ============================================
-  // run — background job
-  // ============================================
 
   async run(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string): Promise<void> {
     try {
       const sources = this.metadataCollector.getSources(apiType);
 
-      // prepare — הורדת Excel וכו'. אם מחזיר folderId חדש, משתמשים בו
       let targetFolderId = folderId;
       for (const source of sources) {
         if (source.prepare) {
@@ -60,9 +56,6 @@ export class Orchestrator {
     }
   }
 
-  // ============================================
-  // fetchFolder — HTTP GET → return children
-  // ============================================
 
   private async fetchFolder(folderId: string, requestId: string): Promise<CargoChild[] | null> {
     logger.log("INFO", requestId, STEPS.COLLECT_FILES, "Fetching folder", { folderId });
@@ -80,9 +73,6 @@ export class Orchestrator {
     }
   }
 
-  // ============================================
-  // processFolder — filter + process each child
-  // ============================================
 
   private async processFolder(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string): Promise<void> {
     const children = await this.fetchFolder(folderId, requestId);
@@ -102,6 +92,13 @@ export class Orchestrator {
       if (child.isFolder) {
         if (recursive) await this.processFolder(child.id, startTime, endTime, recursive, requestId, apiType);
       } else {
+        const fileType = extractFileType(child.name);
+        if (!ALLOWED_IMAGE_TYPES.includes(fileType)) {
+          logger.log("WARN", requestId, STEPS.VALIDATE_CHILDREN, "Skipping non-image file", {
+            fileName: child.name, fileType,
+          });
+          continue;
+        }
         await this.processFile(
           child,
           this.jobStore.get(requestId)?.progress.totalProcessed || 0,
@@ -113,9 +110,6 @@ export class Orchestrator {
     }
   }
 
-  // ============================================
-  // processFile — orchestrates pipeline per file
-  // ============================================
 
   private async processFile(fileInfo: FileInfo, position: number, folderId: string, requestId: string, apiType: string) {
     const fileId = fileInfo.id;
@@ -147,9 +141,6 @@ export class Orchestrator {
     }
   }
 
-  // ============================================
-  // Private helpers
-  // ============================================
 
   private filterByTimeRange(children: CargoChild[], startTime: number | null, endTime: number | null): CargoChild[] {
     if (!startTime || !endTime) return children;

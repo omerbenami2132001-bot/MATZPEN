@@ -30,8 +30,6 @@ export interface Job {
   error: string | null;
 }
 
-// JobStore — מעקב אחרי jobs בזיכרון (Map).
-// שומר סטטוס, progress ותוצאות. מספק response מוכן ל-HTTP.
 export class JobStore {
   private static instance: JobStore;
   private jobs: Map<string, Job> = new Map();

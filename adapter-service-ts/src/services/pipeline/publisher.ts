@@ -1,4 +1,3 @@
-// Publisher — בונה document, שומר ל-S3, ושולח message ל-Kafka.
 import * as logger from "../../utils/logger";
 import { STEPS } from "../../utils/logger";
 import { buildS3Document, buildKafkaMessage, publishToKafka } from "../../utils/eventBuilder";

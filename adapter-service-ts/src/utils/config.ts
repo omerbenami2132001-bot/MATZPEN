@@ -14,10 +14,10 @@ export const config = {
     endpoint: process.env.S3_ENDPOINT,
   },
   kafka: {
-    topic: process.env.KAFKA_TOPIC || "adapter.file.downloads",
-    brokers: process.env.KAFKA_PRODUCER_BROKERS,
-    certPath: process.env.KAFKA_CERT,
-    keyPath: process.env.KAFKA_KEY,
+    topic: process.env.KAFKA_CONSUMER_TOPIC || "adapter.file.downloads",
+    brokers: process.env.KAFKA_PRODUCER_BROKERS_FLIX,
+    cert: process.env.KAFKA_CERT,
+    key: process.env.KAFKA_KEY,
   },
   metadata: {
     api2Url: process.env.METADATA_API_2_URL,

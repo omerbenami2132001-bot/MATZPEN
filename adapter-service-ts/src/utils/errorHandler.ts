@@ -17,7 +17,7 @@ interface AxiosErrorLike {
 }
 
 export class ErrorHandler {
-  static classify(error: Error, step: string): ClassifiedError {
+  static classify(error: Error): ClassifiedError {
     const axiosError = error as AxiosErrorLike;
     const httpStatus = axiosError.response?.status || null;
     const statusText = httpStatus ? (http.STATUS_CODES[httpStatus] || null) : null;
@@ -36,7 +36,7 @@ export class ErrorHandler {
   }
 
   static buildErrorData(error: Error, step: string, context: Record<string, unknown> = {}): Record<string, unknown> {
-    const { errorType, httpStatus, statusText } = ErrorHandler.classify(error, step);
+    const { errorType, httpStatus, statusText } = ErrorHandler.classify(error);
     const axiosError = error as AxiosErrorLike;
 
     return {
@@ -50,7 +50,7 @@ export class ErrorHandler {
   }
 
   static buildFileResult(fileId: string, error: Error, step: string, durationMs: number) {
-    const { errorType, httpStatus, statusText } = ErrorHandler.classify(error, step);
+    const { errorType, httpStatus, statusText } = ErrorHandler.classify(error);
 
     return {
       success: false as const,

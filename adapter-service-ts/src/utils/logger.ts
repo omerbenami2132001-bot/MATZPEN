@@ -8,7 +8,6 @@ const formatLog = (level: string, requestId: string, step: string, message: stri
   };
 
   if (data !== undefined && data !== null) {
-    // אם data הוא Error — מחלצים message + stack
     if (data instanceof Error) {
       entry.data = {
         errorMessage: data.message,

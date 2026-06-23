@@ -1,14 +1,6 @@
 import { ZodSchema } from "zod";
 import { validateOrThrow } from "./validation";
 
-/**
- * Normalizes field names to snake_case.
- * "First Name" → "first_name"
- * "Created At" → "created_at"
- * "100% Complete!" → "100_complete"
- * "file--name" → "file_name"
- * "isFolder" → "isfolder"
- */
 export const normalizeFieldName = (name: string) => {
   return name
     .toLowerCase()
@@ -19,15 +11,6 @@ export const normalizeFieldName = (name: string) => {
     .replace(/^_|_$/g, "");
 }
 
-/**
- * Checks if a value looks like a date/timestamp.
- * 1716825600 (10 digits, integer) → true (UNIX seconds)
- * 1716825600000 (13 digits, integer) → true (UNIX ms)
- * "2026-05-28T14:30:00Z" → true (ISO)
- * "2026-05-28" → true (date only)
- * 1.23123134 → false (float, not a timestamp)
- * "hello" → false
- */
 export const isDateLike = (value: unknown) => {
   if (typeof value === "number") {
     if (!Number.isInteger(value)) return false;
@@ -44,12 +27,6 @@ export const isDateLike = (value: unknown) => {
   return datePatterns.some((pattern) => pattern.test(value));
 }
 
-/**
- * Converts a date-like value to UNIX milliseconds.
- * 1716825600 → 1716825600000 (sec → ms)
- * 1716825600000 → 1716825600000 (already ms)
- * "2026-05-28T14:30:00Z" → 1780063800000
- */
 export const convertToUnixMs = (value: unknown) => {
   if (typeof value === "number") {
     if (!Number.isInteger(value)) return value;
@@ -108,22 +85,12 @@ export function normalizeObject(obj: Record<string, unknown>): Record<string, un
   }, {} as Record<string, unknown>);
 }
 
-/**
- * Adds a prefix to every key in an object.
- * flattenWithPrefix({ id: "1", name: "test" }, "ex")
- * → { ex_id: "1", ex_name: "test" }
- */
 export const flattenWithPrefix = (data: Record<string, unknown>, prefix: string) => {
   return Object.fromEntries(
     Object.entries(data).map(([key, value]) => [`${prefix}_${key}`, value])
   );
 }
 
-/**
- * Shared metadata pipeline: validate → normalize → flatten.
- * metadataPipeline({ Position: "POINT(...)" }, "ab", MetadataApi2Schema)
- * → { ab_position: "POINT(...)" }
- */
 export const metadataPipeline = (data: Record<string, unknown>, prefix: string, schema: ZodSchema | null) => {
   let validated = data;
   if (schema) {

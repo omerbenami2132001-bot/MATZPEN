@@ -63,11 +63,11 @@ test("rejects empty", () => { assertThrows(AdapterRequestParamsSchema, { folderI
 
 // RawDataDocumentSchema
 console.log(`\n${BOLD}RawDataDocumentSchema${RESET}`);
-test("defaults to {}", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת", image_base64: "abc" }); assert(JSON.stringify(r.metadata) === "{}", "default {}"); });
-test("with flat metadata", () => { validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת", image_base64: "abc", metadata: { ex_category: "financial", ab_retention_days: 365 } }); });
-test("empty metadata", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת", image_base64: "abc", metadata: {} }); assert(JSON.stringify(r.metadata) === "{}", "empty"); });
-test("rejects no origin_id", () => { assertThrows(RawDataDocumentSchema, { source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת", image_base64: "abc" }); });
-test("rejects no image_base64", () => { assertThrows(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "אמת" }); });
+test("defaults to {}", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "מציאות אמת מ.ת", image_base64: "abc" }); assert(JSON.stringify(r.metadata) === "{}", "default {}"); });
+test("with flat metadata", () => { validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "מציאות אמת מ.ת", image_base64: "abc", metadata: { ex_category: "financial", ab_retention_days: 365 } }); });
+test("empty metadata", () => { const r: any = validateOrThrow(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "מציאות אמת מ.ת", image_base64: "abc", metadata: {} }); assert(JSON.stringify(r.metadata) === "{}", "empty"); });
+test("rejects no origin_id", () => { assertThrows(RawDataDocumentSchema, { source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "מציאות אמת מ.ת", image_base64: "abc" }); });
+test("rejects no image_base64", () => { assertThrows(RawDataDocumentSchema, { origin_id: "f1", source_name: "x", insertion_time: "2026-05-27T14:30:00Z", original_file_type: "png", reality: "מציאות אמת מ.ת" }); });
 
 // KafkaMessageSchema
 console.log(`\n${BOLD}KafkaMessageSchema${RESET}`);
@@ -139,15 +139,38 @@ test("nested", () => { const r: any = normalizeObject({ "User Info": { "Full Nam
 test("empty", () => assert(Object.keys(normalizeObject({})).length === 0, "empty"));
 
 // MetadataApi2Schema
-console.log(`\n${BOLD}MetadataApi2Schema (Position WKT)${RESET}`);
-test("valid WKT POINT (capital P)", () => { validateOrThrow(MetadataApi2Schema, { Position: "POINT(34.7818 32.0853)", Sensitivity: "internal" }); });
-test("valid WKT POINT (lowercase p)", () => { validateOrThrow(MetadataApi2Schema, { position: "POINT(34.7818 32.0853)", sensitivity: "internal" }); });
-test("valid negative coords", () => { validateOrThrow(MetadataApi2Schema, { Position: "POINT(-73.9857 40.7484)", Other: "data" }); });
-test("valid integers", () => { validateOrThrow(MetadataApi2Schema, { Position: "POINT(35 32)" }); });
-test("rejects missing Position", () => { assertThrows(MetadataApi2Schema, { Sensitivity: "internal" }); });
-test("rejects non-WKT format", () => { assertThrows(MetadataApi2Schema, { Position: "34.7818, 32.0853" }); });
-test("rejects number Position", () => { assertThrows(MetadataApi2Schema, { Position: 123 }); });
-test("rejects empty string", () => { assertThrows(MetadataApi2Schema, { Position: "" }); });
+console.log(`\n${BOLD}MetadataApi2Schema (positions WKT array)${RESET}`);
+test("valid single POINT", () => { validateOrThrow(MetadataApi2Schema, { positions: ["POINT(34.7818 32.0853)"] }); });
+test("valid multiple positions", () => { validateOrThrow(MetadataApi2Schema, { positions: ["POINT(35 33)", "POLYGON((35 33, 36 33, 36 34, 35 33))"] }); });
+test("valid POLYGON", () => { validateOrThrow(MetadataApi2Schema, { positions: ["POLYGON((35 33, 36 33, 36 34, 35 33))"] }); });
+test("valid with one bad one good", () => { validateOrThrow(MetadataApi2Schema, { positions: ["invalid", "POINT(35 33)"] }); });
+test("rejects missing positions", () => { assertThrows(MetadataApi2Schema, { other: "data" }); });
+test("rejects empty array", () => { assertThrows(MetadataApi2Schema, { positions: [] }); });
+test("rejects all invalid", () => { assertThrows(MetadataApi2Schema, { positions: ["34.78, 32.08", "not wkt"] }); });
+test("rejects non-array", () => { assertThrows(MetadataApi2Schema, { positions: "POINT(35 33)" }); });
+
+// geometryToWkt
+import { geometryToWkt, geometriesToWkt } from "../../utils/geometryToWkt";
+console.log(`\n${BOLD}geometryToWkt${RESET}`);
+test("Point → WKT", () => { assert(geometryToWkt({ type: "Point", coordinates: [35, 33] }) === "POINT(35 33)", "point"); });
+test("Polygon → WKT", () => { assert(geometryToWkt({ type: "Polygon", coordinates: [[[35,33],[36,33],[36,34],[35,33]]] }) === "POLYGON((35 33, 36 33, 36 34, 35 33))", "polygon"); });
+test("LineString → WKT", () => { assert(geometryToWkt({ type: "LineString", coordinates: [[35,33],[36,34]] }) === "LINESTRING(35 33, 36 34)", "linestring"); });
+test("unknown type → null", () => { assert(geometryToWkt({ type: "Unknown", coordinates: [] }) === null, "null"); });
+test("array of geometries", () => {
+  const result = geometriesToWkt([
+    { type: "Point", coordinates: [35, 33] },
+    { type: "Point", coordinates: [36, 34] },
+  ]);
+  assert(result.length === 2, "two results");
+  assert(result[0] === "POINT(35 33)", "first");
+});
+test("skips invalid in array", () => {
+  const result = geometriesToWkt([
+    { type: "Point", coordinates: [35, 33] },
+    { type: "Unknown", coordinates: [] },
+  ]);
+  assert(result.length === 1, "one valid");
+});
 
 // ============================================
 // CargoChildSchema — coerce
@@ -208,17 +231,17 @@ function setupChatMetadata(): CargoChatMetadata {
   const instance = chat as any;
 
   instance.allRows = [
-    { date: "2026-06-01", time: "14:28:00", user: "john", displayName: "ג'ון", content: "הנה התמונה", filename: "photo1.png" },
-    { date: "2026-06-01", time: "14:29:00", user: "john", displayName: "ג'ון", content: "שלחתי", filename: "" },
-    { date: "2026-06-01", time: "14:30:00", user: "john", displayName: "ג'ון", content: "ראית?", filename: "" },
-    { date: "2026-06-01", time: "14:31:00", user: "john", displayName: "ג'ון", content: "עדכן אותי", filename: "" },
-    { date: "2026-06-01", time: "14:45:00", user: "jane", displayName: "ג'יין", content: "תודה", filename: "" },
-    { date: "2026-06-01", time: "14:28:30", user: "jane", displayName: "ג'יין", content: "מעניין", filename: "" },
-    { date: "2026-06-01", time: "15:00:00", user: "john", displayName: "ג'ון", content: "הודעה מאוחרת", filename: "" },
+    { date: "2026-06-01", time: "14:28:00", user: "john", displayName: "ג'ון", content: "הנה התמונה", filename: "photo1.png", excelName: "chat_2026_06_01" },
+    { date: "2026-06-01", time: "14:29:00", user: "john", displayName: "ג'ון", content: "שלחתי", filename: "", excelName: "chat_2026_06_01" },
+    { date: "2026-06-01", time: "14:30:00", user: "john", displayName: "ג'ון", content: "ראית?", filename: "", excelName: "chat_2026_06_01" },
+    { date: "2026-06-01", time: "14:31:00", user: "john", displayName: "ג'ון", content: "עדכן אותי", filename: "", excelName: "chat_2026_06_01" },
+    { date: "2026-06-01", time: "14:45:00", user: "jane", displayName: "ג'יין", content: "תודה", filename: "", excelName: "chat_2026_06_01" },
+    { date: "2026-06-01", time: "14:28:30", user: "jane", displayName: "ג'יין", content: "מעניין", filename: "", excelName: "chat_2026_06_01" },
+    { date: "2026-06-01", time: "15:00:00", user: "john", displayName: "ג'ון", content: "הודעה מאוחרת", filename: "", excelName: "chat_2026_06_01" },
   ];
 
   instance.fileMap = new Map([
-    ["photo1", { user: "john", datetime: new Date("2026-06-01T14:28:00") }],
+    ["photo1", { user: "john", datetime: new Date("2026-06-01T14:28:00"), excelName: "chat_2026_06_01" }],
   ]);
 
   return chat;

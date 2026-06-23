@@ -15,7 +15,7 @@ export const buildS3Document = (fileInfo: FileInfo, fileBase64: string, metadata
     source_name: config.sourceName,
     insertion_time: new Date().toISOString(),
     original_file_type: extractFileType(fileInfo.name),
-    reality: "אמת",
+    reality: "מציאות אמת מ.ת",
     image_base64: fileBase64,
     metadata: metadata || {},
   };

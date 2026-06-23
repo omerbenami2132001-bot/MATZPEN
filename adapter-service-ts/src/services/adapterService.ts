@@ -1,5 +1,3 @@
-// AdapterService — entry point ל-HTTP.
-// אחראי על validation, ניהול jobs, ו-delegation ל-Orchestrator.
 
 import { AdapterRequestQuerySchema, AdapterRequestParamsSchema } from "../schemas";
 import { validateOrThrow, logger } from "../utils";
@@ -20,9 +18,6 @@ export class AdapterService {
     this.orchestrator = orchestrator;
   }
 
-  // ============================================
-  // handleIngest — entry point for POST /download/:folderId
-  // ============================================
 
   handleIngest(query: Record<string, string>, params: Record<string, string>, apiType: string = API_TYPES.DEFAULT): HttpResponse {
     const requestId = uuidv4();
@@ -55,9 +50,6 @@ export class AdapterService {
     }
   }
 
-  // ============================================
-  // handleStatus — entry point for GET /status/:requestId
-  // ============================================
 
   handleStatus(requestId: string): HttpResponse {
     const response = this.jobStore.toResponse(requestId);
