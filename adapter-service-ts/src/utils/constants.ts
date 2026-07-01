@@ -5,7 +5,7 @@ export enum API_TYPES {
 
 export const METADATA_API_1_PREFIX = "ex";
 export const METADATA_API_2_PREFIX = "ab";
-export const METADATA_API_2_FIELDS = ["event.geometries"];
+export const METADATA_API_2_FIELDS = ["contentData", "isDeleted"];
 
 export const ALLOWED_IMAGE_TYPES = ["png", "jpg", "jpeg", "gif", "webp", "bmp"];
 

@@ -139,18 +139,18 @@ test("nested", () => { const r: any = normalizeObject({ "User Info": { "Full Nam
 test("empty", () => assert(Object.keys(normalizeObject({})).length === 0, "empty"));
 
 // MetadataApi2Schema
-console.log(`\n${BOLD}MetadataApi2Schema (positions WKT array)${RESET}`);
-test("valid single POINT", () => { validateOrThrow(MetadataApi2Schema, { positions: ["POINT(34.7818 32.0853)"] }); });
-test("valid multiple positions", () => { validateOrThrow(MetadataApi2Schema, { positions: ["POINT(35 33)", "POLYGON((35 33, 36 33, 36 34, 35 33))"] }); });
-test("valid POLYGON", () => { validateOrThrow(MetadataApi2Schema, { positions: ["POLYGON((35 33, 36 33, 36 34, 35 33))"] }); });
-test("valid with one bad one good", () => { validateOrThrow(MetadataApi2Schema, { positions: ["invalid", "POINT(35 33)"] }); });
-test("rejects missing positions", () => { assertThrows(MetadataApi2Schema, { other: "data" }); });
-test("rejects empty array", () => { assertThrows(MetadataApi2Schema, { positions: [] }); });
-test("rejects all invalid", () => { assertThrows(MetadataApi2Schema, { positions: ["34.78, 32.08", "not wkt"] }); });
-test("rejects non-array", () => { assertThrows(MetadataApi2Schema, { positions: "POINT(35 33)" }); });
+console.log(`\n${BOLD}MetadataApi2Schema (contentData.Position WKT string)${RESET}`);
+test("valid single POINT", () => { validateOrThrow(MetadataApi2Schema, { contentData: { Position: "POINT (34.7818 32.0853)" } }); });
+test("valid POLYGON", () => { validateOrThrow(MetadataApi2Schema, { contentData: { Position: "POLYGON ((35 33, 36 33, 36 34, 35 33))" } }); });
+test("valid MULTIPOINT", () => { validateOrThrow(MetadataApi2Schema, { contentData: { Position: "MULTIPOINT (35 33, 36 34)" } }); });
+test("valid with extra fields (catchall)", () => { validateOrThrow(MetadataApi2Schema, { contentData: { Position: "POINT (35 33)", other: "x" }, isDeleted: false }); });
+test("rejects missing contentData", () => { assertThrows(MetadataApi2Schema, { other: "data" }); });
+test("rejects missing Position", () => { assertThrows(MetadataApi2Schema, { contentData: { other: "x" } }); });
+test("rejects invalid WKT Position", () => { assertThrows(MetadataApi2Schema, { contentData: { Position: "34.78, 32.08" } }); });
+test("rejects non-string Position", () => { assertThrows(MetadataApi2Schema, { contentData: { Position: 123 } }); });
 
 // geometryToWkt
-import { geometryToWkt, geometriesToWkt } from "../../utils/geometryToWkt";
+import { geometryToWkt, geometriesToWkt } from "../../utils/geometry";
 console.log(`\n${BOLD}geometryToWkt${RESET}`);
 test("Point → WKT", () => { assert(geometryToWkt({ type: "Point", coordinates: [35, 33] }) === "POINT(35 33)", "point"); });
 test("Polygon → WKT", () => { assert(geometryToWkt({ type: "Polygon", coordinates: [[[35,33],[36,33],[36,34],[35,33]]] }) === "POLYGON((35 33, 36 33, 36 34, 35 33))", "polygon"); });
@@ -227,7 +227,7 @@ import { CargoChatMetadata } from "../../services/cargoChatMetadata";
 console.log(`\n${BOLD}CargoChatMetadata${RESET}`);
 
 function setupChatMetadata(): CargoChatMetadata {
-  const chat = new CargoChatMetadata();
+  const chat = new CargoChatMetadata({});
   const instance = chat as any;
 
   instance.allRows = [

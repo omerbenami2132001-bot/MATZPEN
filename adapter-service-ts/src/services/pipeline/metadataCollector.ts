@@ -4,10 +4,11 @@ import { CargoChatMetadata } from "../cargoChatMetadata";
 import { API_TYPES } from "../../utils/constants";
 import { MetadataSource, FileInfo } from "../../types";
 import { metadataClient } from "../apiClients";
+import { groupExtractedMetadata } from "../../utils/extractedMetadataConfig";
 
 export const METADATA_SOURCES: Record<string, MetadataSource[]> = {
   [API_TYPES.DEFAULT]: [new Source1Metadata(metadataClient)],
-  [API_TYPES.CHAT]: [new CargoChatMetadata()],
+  [API_TYPES.CHAT]: [new CargoChatMetadata(groupExtractedMetadata)],
 };
 
 export class MetadataCollector {

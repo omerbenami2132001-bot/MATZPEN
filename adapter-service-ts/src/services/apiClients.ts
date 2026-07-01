@@ -4,8 +4,8 @@ import { config } from "../utils/config";
 export const cargoClient = new ApiClient({
   baseURL: config.api.baseUrl,
   headers: {
-    "x-api-key": config.api.key,
-    "x-api-name": config.api.name,
+    "x-cargo-api-key": config.api.key,
+    "x-cargo-app-name": config.api.name,
     "accept": "application/json",
   },
   timeout: 30000,

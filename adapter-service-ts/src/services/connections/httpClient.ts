@@ -4,7 +4,7 @@ export class ApiClient {
   private client: AxiosInstance;
   private requestDelayMs: number;
 
-  constructor(config: AxiosRequestConfig, requestDelayMs = 1000) {
+  constructor(config: AxiosRequestConfig, requestDelayMs = 3500) {
     this.client = axios.create(config);
     this.requestDelayMs = requestDelayMs;
   }

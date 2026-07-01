@@ -10,7 +10,7 @@ export const config = {
   },
   s3: {
     bucketName: process.env.S3_RAW_BUCKET_NAME || "raw-data",
-    region: process.env.AWS_REGION || "us-east-1",
+    region: process.env.S3_REGION || "us-east-1",
     endpoint: process.env.S3_ENDPOINT,
   },
   kafka: {
@@ -27,7 +27,7 @@ export const config = {
 export const validateConfig = () => {
   const missing: string[] = [];
 
-  if (!config.api.baseUrl) missing.push("API_BASE_URL");
+  if (!config.api.baseUrl) missing.push("API_CARGO_BASE_URL");
   if (!config.api.key) missing.push("API_KEY");
   if (!config.api.name) missing.push("API_NAME");
 

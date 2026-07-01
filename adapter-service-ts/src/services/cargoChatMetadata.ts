@@ -8,6 +8,7 @@ import {
   EXCEL_FOLDER_NAME, FILES_FOLDER_NAME, EXCEL_COLUMNS,
 } from "../utils/constants";
 import { cargoClient } from "./apiClients";
+import { ExtractedMetadataConfig } from "../utils/extractedMetadataConfig";
 
 interface ExcelRow {
   date: string;
@@ -37,6 +38,11 @@ export class CargoChatMetadata {
   private allRows: ExcelRow[] = [];
   private fileMap: Map<string, FileAttachment> = new Map();
   private filesFolderId: string | null = null;
+  private groupExtractedMetadata: Record<string, ExtractedMetadataConfig>;
+
+  constructor(groupExtractedMetadata: Record<string, ExtractedMetadataConfig>) {
+    this.groupExtractedMetadata = groupExtractedMetadata;
+  }
 
   async prepare(folderId: string, requestId: string) {
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: scanning for Excel folder", { folderId });
@@ -107,7 +113,7 @@ export class CargoChatMetadata {
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: downloading Excel", { fileId, fileName });
 
     const response = await withRetry(
-      () => cargoClient.get(`/files/${fileId}/download`, { responseType: "arraybuffer" }),
+      () => cargoClient.get(`/fsEntries/${fileId}/stream`, { responseType: "arraybuffer" }),
       { retries: 3, delayMs: 1000, label: `download excel ${fileId}`, requestId }
     );
 
@@ -157,6 +163,32 @@ export class CargoChatMetadata {
     return diffMs <= windowMs;
   }
 
+  private getExtractedMetadata = (messages: string[], chatGroupName: string) => {
+    const config = this.groupExtractedMetadata[chatGroupName];
+    if (!config) return {};
+    const { extractors, postProcessors } = config;
+
+    const regexResults = messages.reduce((extractedMetadataAccumluator, message) => {
+      Object.entries(extractors).forEach(([extractedFieldName, extractorFunction]) => {
+        const currentExtractedMetadata = extractorFunction(message);
+
+        currentExtractedMetadata && extractedMetadataAccumluator[extractedFieldName].push(...currentExtractedMetadata);
+      })
+
+      return extractedMetadataAccumluator;
+    }, Object.fromEntries(Object.keys(extractors).map((extractedFieldName) => [extractedFieldName, []])) as Record<string, any>);
+
+    const postProcessResults = Object.fromEntries(
+      Object.entries(regexResults).map(([key, value]) => [
+        key, postProcessors[key] ? postProcessors[key](value) : value
+      ])
+    );
+
+    return Object.fromEntries(
+      Object.entries(postProcessResults).filter(([_key, value]) => value != null)
+    );
+  }
+
   async process(fileId: string, requestId: string, fileInfo?: Record<string, unknown>) {
     const fileName = String(fileInfo?.name || "");
     const fileNameWithoutExt = this.stripExtension(fileName);
@@ -188,7 +220,8 @@ export class CargoChatMetadata {
       file_date: datetime.toISOString(),
       message_count: messages.length,
       messages,
-      chat_group_name: excelName,
+      group_name: excelName,
+      ...this.getExtractedMetadata(messages.map((msg) => msg.content), excelName),
     };
 
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, "CargoChatMetadata: metadata ready", {

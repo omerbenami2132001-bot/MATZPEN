@@ -11,18 +11,24 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1009.0",
+    "@turf/turf": "^7.3.5",
     "axios": "^1.7.2",
     "dotenv": "^16.4.5",
+    "epsg-index": "^2.0.0",
     "express": "^4.18.2",
     "kafkajs": "^2.2.4",
+    "proj4": "^2.20.9",
     "uuid": "11.1.0",
+    "wellknown": "^0.5.0",
     "xlsx": "^0.18.5",
     "zod": "4.3.6"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.0.0",
+    "@types/proj4": "^2.5.6",
     "@types/uuid": "^10.0.0",
+    "@types/wellknown": "^0.5.8",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.0"
   }

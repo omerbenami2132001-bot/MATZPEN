@@ -1,14 +1,14 @@
 import { z } from "zod";
 
-
-const WKT_REGEX = /^(POINT|LINESTRING|POLYGON|MULTIPOINT)\s*\(.+\)$/;
-
-export const MetadataApi2Schema = z.record(z.string(), z.unknown()).refine(
-  (data) => {
-    const positions = data.positions;
-    if (!Array.isArray(positions)) return false;
-    if (positions.length === 0) return false;
-    return positions.some((pos) => typeof pos === "string" && WKT_REGEX.test(pos));
-  },
-  { message: "positions must contain at least one valid WKT geometry" }
-);
+export const MetadataApi2Schema = z.object({
+  contentData: z.object({
+    Position: z.string().refine(
+      (val) => {
+        const trimmed = val.trim();
+        const wktPattern = /^(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)\s/i;
+        return wktPattern.test(trimmed);
+      },
+      { message: "Position must be a valid WKT geometry string (e.g., POINT (x y))" }
+    ),
+  }).catchall(z.unknown()),
+}).catchall(z.unknown());

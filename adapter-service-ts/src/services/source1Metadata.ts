@@ -3,7 +3,7 @@ import { STEPS } from "../utils/logger";
 import { metadataPipeline } from "../utils/normalizer";
 import { withRetry } from "../utils/retry";
 import { fromJson } from "../utils/fieldExtractor";
-import { geometriesToWkt } from "../utils/geometryToWkt";
+import { geometriesToWkt } from "../utils/geometry";
 import { METADATA_API_2_PREFIX, METADATA_API_2_FIELDS } from "../utils/constants";
 import { config } from "../utils/config";
 import { MetadataApi2Schema } from "../schemas";

@@ -1,8 +1,31 @@
+import { multiPoint } from "@turf/turf";
+import { GeoJSONGeometry, GeoJSONGeometryCollection, GeoJSONMultiPoint, GeoJSONPoint } from "wellknown";
 
 interface Geometry {
   type: string;
   coordinates: any;
 }
+
+const getUniqueGeometries = <T extends Exclude<GeoJSON.Geometry, GeoJSON.GeometryCollection>>(
+  geometries: T[]
+) => {
+  const seen = new Set<string>();
+
+  return geometries.filter((p) => {
+    const key = JSON.stringify(p.coordinates);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }) as T[];
+};
+
+export const combinePoints = (points: GeoJSONPoint[]) => {
+  if (!points.length) return null;
+
+  const uniquePoints = getUniqueGeometries(points);
+
+  return uniquePoints.length === 1 ? uniquePoints[0] : multiPoint(uniquePoints.map((p) => p.coordinates))["geometry"] as GeoJSONMultiPoint;
+};
 
 export const geometryToWkt = (geometry: Geometry): string | null => {
   if (!geometry || !geometry.type || !geometry.coordinates) return null;

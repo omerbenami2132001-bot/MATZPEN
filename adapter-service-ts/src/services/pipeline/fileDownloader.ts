@@ -12,7 +12,7 @@ export class FileDownloader {
 
   async download(fileId: string, requestId: string) {
     const response = await withRetry(
-      () => this.apiClient.get(`/files/${fileId}/download`, { responseType: "arraybuffer" }),
+      () => this.apiClient.get(`/fsEntries/${fileId}/stream`, { responseType: "arraybuffer" }),
       { retries: 3, delayMs: 1000, label: `download ${fileId}`, requestId }
     );
     const buffer = Buffer.from(response.data as ArrayBuffer);

@@ -18,7 +18,7 @@ router.post("/download/:folderId", async (req: Request, res: Response, next: Nex
   }
 });
 
-router.post("/chat/:folderId", async (req: Request, res: Response, next: NextFunction) => {
+router.post("/cargo_chat/:folderId", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { statusCode, body } = service.handleIngest(
       { ...req.query as Record<string, string>, recursive: "true" },
