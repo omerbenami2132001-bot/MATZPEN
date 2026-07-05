@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import * as logger from "../utils/logger";
 import { STEPS } from "../utils/logger";
 import { metadataPipeline } from "../utils/normalizer";
+import { wallTimeToUnixMs } from "../utils/dateTime";
 import { withRetry } from "../utils/retry";
 import {
   TIME_WINDOW_MINUTES, CARGO_CHAT_PREFIX,
@@ -9,6 +10,7 @@ import {
 } from "../utils/constants";
 import { cargoClient } from "./apiClients";
 import { ExtractedMetadataConfig } from "../utils/extractedMetadataConfig";
+import { MetadataSourceConfig } from "../utils/metadataConfig";
 
 interface ExcelRow {
   date: string;
@@ -22,7 +24,7 @@ interface ExcelRow {
 
 interface FileAttachment {
   user: string;
-  datetime: Date;
+  datetimeMs: number;
   excelName: string;
 }
 
@@ -39,9 +41,11 @@ export class CargoChatMetadata {
   private fileMap: Map<string, FileAttachment> = new Map();
   private filesFolderId: string | null = null;
   private groupExtractedMetadata: Record<string, ExtractedMetadataConfig>;
+  private prefix: string;
 
-  constructor(groupExtractedMetadata: Record<string, ExtractedMetadataConfig>) {
+  constructor(groupExtractedMetadata: Record<string, ExtractedMetadataConfig>, sourceConfig?: MetadataSourceConfig) {
     this.groupExtractedMetadata = groupExtractedMetadata;
+    this.prefix = sourceConfig?.prefix ?? CARGO_CHAT_PREFIX;
   }
 
   async prepare(folderId: string, requestId: string) {
@@ -136,9 +140,9 @@ export class CargoChatMetadata {
       this.allRows.push(excelRow);
 
       if (filename) {
-        const datetime = this.parseDateTime(date, time);
+        const datetimeMs = this.parseDateTime(date, time);
         const nameWithoutExt = this.stripExtension(filename);
-        this.fileMap.set(nameWithoutExt, { user, datetime, excelName: this.stripExtension(fileName) });
+        this.fileMap.set(nameWithoutExt, { user, datetimeMs, excelName: this.stripExtension(fileName) });
       }
     }
 
@@ -147,8 +151,8 @@ export class CargoChatMetadata {
     });
   }
 
-  private parseDateTime(date: string, time: string) {
-    return new Date(`${date}T${time}`);
+  private parseDateTime(date: string, time: string): number {
+    return wallTimeToUnixMs(date, time);
   }
 
   private stripExtension(filename: string) {
@@ -156,9 +160,9 @@ export class CargoChatMetadata {
     return lastDot > 0 ? filename.substring(0, lastDot) : filename;
   }
 
-  private isWithinWindow(rowDate: string, rowTime: string, targetDatetime: Date) {
-    const rowDatetime = this.parseDateTime(rowDate, rowTime);
-    const diffMs = Math.abs(rowDatetime.getTime() - targetDatetime.getTime());
+  private isWithinWindow(rowDate: string, rowTime: string, targetDatetimeMs: number) {
+    const rowDatetimeMs = this.parseDateTime(rowDate, rowTime);
+    const diffMs = Math.abs(rowDatetimeMs - targetDatetimeMs);
     const windowMs = TIME_WINDOW_MINUTES * 60 * 1000;
     return diffMs <= windowMs;
   }
@@ -205,21 +209,26 @@ export class CargoChatMetadata {
       return {};
     }
 
-    const { user, datetime, excelName } = attachment;
+    const { user, datetimeMs, excelName } = attachment;
 
     const messages: ChatMessage[] = this.allRows
       .filter((row) =>
         row.user === user &&
         row.content.trim() !== "" &&
-        this.isWithinWindow(row.date, row.time, datetime)
+        this.isWithinWindow(row.date, row.time, datetimeMs)
       )
       .map(({ date, time, user, displayName, content }) => ({ date, time, user, displayName, content }));
 
+    const description = messages
+      .map(({ time, content }) => `${time.slice(0, 5)}: ${content}`)
+      .join("\n");
+
     const metadata = {
       user,
-      file_date: datetime.toISOString(),
+      file_date: datetimeMs,
       message_count: messages.length,
       messages,
+      description,
       group_name: excelName,
       ...this.getExtractedMetadata(messages.map((msg) => msg.content), excelName),
     };
@@ -228,7 +237,7 @@ export class CargoChatMetadata {
       fileName, user, messageCount: messages.length,
     });
 
-    return metadataPipeline(metadata, CARGO_CHAT_PREFIX, null);
+    return metadataPipeline(metadata, this.prefix, null);
   }
 
   getFilesFolderId() {

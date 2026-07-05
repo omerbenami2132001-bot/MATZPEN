@@ -32,6 +32,9 @@ export class AdapterService {
       const startTime = validatedQuery.startTime ? parseInt(validatedQuery.startTime, 10) : null;
       const endTime = validatedQuery.endTime ? parseInt(validatedQuery.endTime, 10) : null;
       const recursive = validatedQuery.recursive.toLowerCase() === "true";
+      const fileIds = validatedQuery.fileIds
+        ? validatedQuery.fileIds.split(",").map((id) => id.trim()).filter((id) => id !== "")
+        : null;
 
       const existingJobId = this.jobStore.findRunning(folderId, startTime, endTime);
       if (existingJobId) {
@@ -39,8 +42,8 @@ export class AdapterService {
         return { statusCode: 409, body: this.jobStore.toConflictResponse(existingJobId) };
       }
 
-      this.jobStore.create(requestId, folderId, { startTime, endTime, recursive });
-      this.orchestrator.run(folderId, startTime, endTime, recursive, requestId, apiType);
+      this.jobStore.create(requestId, folderId, { startTime, endTime, recursive }, fileIds ? fileIds.length : null);
+      this.orchestrator.run(folderId, startTime, endTime, recursive, requestId, apiType, fileIds);
 
       return { statusCode: 202, body: this.jobStore.toCreatedResponse(requestId, folderId) };
     } catch (err) {

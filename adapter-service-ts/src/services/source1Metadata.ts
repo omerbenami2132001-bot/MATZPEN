@@ -4,22 +4,25 @@ import { metadataPipeline } from "../utils/normalizer";
 import { withRetry } from "../utils/retry";
 import { fromJson } from "../utils/fieldExtractor";
 import { geometriesToWkt } from "../utils/geometry";
-import { METADATA_API_2_PREFIX, METADATA_API_2_FIELDS } from "../utils/constants";
-import { config } from "../utils/config";
-import { MetadataApi2Schema } from "../schemas";
+import { METADATA_SOURCES_CONFIG, MetadataSourceConfig } from "../utils/metadataConfig";
+import { ZodSchema } from "zod";
 import { ApiClient } from "./connections/httpClient";
 
 export class Source1Metadata {
   private apiClient: ApiClient;
-  private url: string | undefined;
+  private url: string | null | undefined;
   private fields: string[];
   private prefix: string;
+  private schema: ZodSchema | null;
+  private geometryField: string | null;
 
-  constructor(apiClient: ApiClient) {
+  constructor(apiClient: ApiClient, sourceConfig: MetadataSourceConfig = METADATA_SOURCES_CONFIG.source1) {
     this.apiClient = apiClient;
-    this.url = config.metadata.api2Url;
-    this.fields = METADATA_API_2_FIELDS;
-    this.prefix = METADATA_API_2_PREFIX;
+    this.url = sourceConfig.url;
+    this.fields = sourceConfig.fields;
+    this.prefix = sourceConfig.prefix;
+    this.schema = sourceConfig.schema;
+    this.geometryField = sourceConfig.geometryField;
   }
 
   private stripExtension(filename: string) {
@@ -52,9 +55,9 @@ export class Source1Metadata {
 
     const extracted = fromJson(response.data as Record<string, unknown>, this.fields);
 
-    if (extracted.geometries) {
-      extracted.positions = geometriesToWkt(extracted.geometries as any[]);
-      delete extracted.geometries;
+    if (this.geometryField && extracted[this.geometryField]) {
+      extracted.positions = geometriesToWkt(extracted[this.geometryField] as any[]);
+      delete extracted[this.geometryField];
     }
 
     if (Object.keys(extracted).length === 0) {
@@ -64,7 +67,7 @@ export class Source1Metadata {
       return {};
     }
 
-    const result = metadataPipeline(extracted, this.prefix, MetadataApi2Schema);
+    const result = metadataPipeline(extracted, this.prefix, this.schema);
 
     logger.log("INFO", requestId, STEPS.FETCH_METADATA, `Metadata ready from ${this.prefix} API`, {
       prefix: this.prefix, fieldCount: Object.keys(result).length,

@@ -26,6 +26,7 @@ export interface Job {
   durationMs: number | null;
   params: { startTime: number | null; endTime: number | null; recursive: boolean };
   progress: { totalProcessed: number; succeeded: number; failed: number };
+  fileIdFilter: { requested: number; matched: number; skipped: number } | null;
   results: FileResult[];
   error: string | null;
 }
@@ -43,7 +44,7 @@ export class JobStore {
     return JobStore.instance;
   }
 
-  create(requestId: string, folderId: string, params: { startTime: number | null; endTime: number | null; recursive: boolean }): Job {
+  create(requestId: string, folderId: string, params: { startTime: number | null; endTime: number | null; recursive: boolean }, fileIdCount: number | null = null): Job {
     const job: Job = {
       requestId, folderId,
       status: JOB_STATUS.RUNNING,
@@ -52,11 +53,24 @@ export class JobStore {
       durationMs: null,
       params,
       progress: { totalProcessed: 0, succeeded: 0, failed: 0 },
+      fileIdFilter: fileIdCount !== null ? { requested: fileIdCount, matched: 0, skipped: 0 } : null,
       results: [],
       error: null,
     };
     this.jobs.set(requestId, job);
     return job;
+  }
+
+  recordFileIdMatch(requestId: string): void {
+    const job = this.jobs.get(requestId);
+    if (!job || !job.fileIdFilter) return;
+    job.fileIdFilter.matched++;
+  }
+
+  recordFileIdSkip(requestId: string): void {
+    const job = this.jobs.get(requestId);
+    if (!job || !job.fileIdFilter) return;
+    job.fileIdFilter.skipped++;
   }
 
   get(requestId: string): Job | null {
@@ -123,6 +137,8 @@ export class JobStore {
     const job = this.jobs.get(requestId);
     if (!job) return null;
 
+    const isRunning = job.status === JOB_STATUS.RUNNING;
+
     return {
       requestId: job.requestId,
       folderId: job.folderId,
@@ -130,10 +146,11 @@ export class JobStore {
       progress: job.progress,
       startedAt: job.startedAt,
       finishedAt: job.finishedAt,
-      durationMs: job.durationMs,
+      durationMs: isRunning ? Date.now() - job.startedAt : job.durationMs,
       params: job.params,
+      ...(job.fileIdFilter ? { fileIdFilter: job.fileIdFilter } : {}),
       ...(job.error ? { error: job.error } : {}),
-      ...(job.status !== JOB_STATUS.RUNNING ? {
+      ...(!isRunning ? {
         results: {
           succeeded: job.results.filter(({ success }) => success).map(({ fileId, durationMs }) => ({ fileId, durationMs })),
           failed: job.results.filter(({ success }) => !success).map(({ fileId, durationMs, failedStep, errorType, error, httpStatus, statusText, validationErrors }) => ({

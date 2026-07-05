@@ -25,7 +25,7 @@ export class Orchestrator {
   }
 
 
-  async run(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string): Promise<void> {
+  async run(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string, fileIds: string[] | null = null): Promise<void> {
     try {
       const sources = this.metadataCollector.getSources(apiType);
 
@@ -37,10 +37,21 @@ export class Orchestrator {
         }
       }
 
-      await this.processFolder(targetFolderId, startTime, endTime, recursive, requestId, apiType);
+      const fileIdSet = fileIds ? new Set(fileIds) : null;
+
+      await this.processFolder(targetFolderId, startTime, endTime, recursive, requestId, apiType, fileIdSet);
       this.jobStore.complete(requestId);
 
       const job = this.jobStore.get(requestId)!;
+
+      if (job.fileIdFilter) {
+        logger.log("INFO", requestId, STEPS.VALIDATE_CHILDREN, "fileIds filter active", {
+          requested: job.fileIdFilter.requested,
+          matched: job.fileIdFilter.matched,
+          skipped: job.fileIdFilter.skipped,
+        });
+      }
+
       logger.log("INFO", requestId, STEPS.HTTP_RESPONSE, "Job completed", {
         folderId,
         totalFiles: job.progress.totalProcessed,
@@ -74,7 +85,7 @@ export class Orchestrator {
   }
 
 
-  private async processFolder(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string): Promise<void> {
+  private async processFolder(folderId: string, startTime: number | null, endTime: number | null, recursive: boolean, requestId: string, apiType: string, fileIdSet: Set<string> | null): Promise<void> {
     const children = await this.fetchFolder(folderId, requestId);
     if (!children) return;
 
@@ -90,8 +101,14 @@ export class Orchestrator {
 
     for (const child of filtered) {
       if (child.isFolder) {
-        if (recursive) await this.processFolder(child.id, startTime, endTime, recursive, requestId, apiType);
+        if (recursive) await this.processFolder(child.id, startTime, endTime, recursive, requestId, apiType, fileIdSet);
       } else {
+        if (fileIdSet && !fileIdSet.has(child.id)) {
+          this.jobStore.recordFileIdSkip(requestId);
+          continue;
+        }
+        if (fileIdSet) this.jobStore.recordFileIdMatch(requestId);
+
         const fileType = extractFileType(child.name);
         if (!ALLOWED_IMAGE_TYPES.includes(fileType)) {
           logger.log("WARN", requestId, STEPS.VALIDATE_CHILDREN, "Skipping non-image file", {

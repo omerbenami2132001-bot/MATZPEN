@@ -8,6 +8,8 @@ export { buildS3Document, buildKafkaMessage, publishToKafka } from "./eventBuild
 
 export { normalizeFieldName, isDateLike, convertToUnixMs, normalizeObject, flattenWithPrefix, metadataPipeline } from "./normalizer";
 
+export { wallTimeToUnixMs } from "./dateTime";
+
 export * from "./constants";
 
 export * as logger from "./logger";

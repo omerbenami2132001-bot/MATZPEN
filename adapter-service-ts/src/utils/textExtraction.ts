@@ -9,7 +9,7 @@ interface PointConfig {
 
 const positionPatterns: Record<string, PointConfig> = {
   "plainCoordinates": {
-    "regex": /(\d+(?:\.\d+)?)\s*[:/ ]\s*(\d+(?:\.\d+)?)/g,
+    "regex": /\b(\d{6})\s*[:/ ]\s*(\d{6})\b/g,
     "lonLatExtractor": TM9toLatLon,
   },
   "UTM": {
@@ -18,7 +18,7 @@ const positionPatterns: Record<string, PointConfig> = {
   },
 };
 
-const objectCommandNamePrefixes = ["מטרה", "יעד", "נקודה"];
+const objectCommandNamePrefixes = ["מיקום"];
 const objectCommandNamePatterns = new RegExp(`(?:${objectCommandNamePrefixes.join("|")})\\s*(\\d{4})\\b`, "g");
 
 const getAllMatchesAndProcess = (message: string, patterns: RegExp, manipulation: (match: RegExpExecArray) => any) =>

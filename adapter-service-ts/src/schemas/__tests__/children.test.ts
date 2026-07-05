@@ -224,6 +224,7 @@ test("normalizes date values", () => {
 // CargoChatMetadata — process logic
 // ============================================
 import { CargoChatMetadata } from "../../services/cargoChatMetadata";
+import { wallTimeToUnixMs } from "../../utils/dateTime";
 console.log(`\n${BOLD}CargoChatMetadata${RESET}`);
 
 function setupChatMetadata(): CargoChatMetadata {
@@ -241,7 +242,7 @@ function setupChatMetadata(): CargoChatMetadata {
   ];
 
   instance.fileMap = new Map([
-    ["photo1", { user: "john", datetime: new Date("2026-06-01T14:28:00"), excelName: "chat_2026_06_01" }],
+    ["photo1", { user: "john", datetimeMs: wallTimeToUnixMs("2026-06-01", "14:28:00"), excelName: "chat_2026_06_01" }],
   ]);
 
   return chat;
@@ -311,6 +312,20 @@ test("metadata has correct prefix em_", async () => {
   assert("em_file_date" in result, "em_file_date prefix");
   assert("em_messages" in result, "em_messages prefix");
   assert("em_message_count" in result, "em_message_count prefix");
+});
+
+test("description concatenates messages as HH:MM: content", async () => {
+  const chat = setupChatMetadata();
+  const result = await chat.process("file-001", "req-1", { name: "photo1.png" });
+  assert("em_description" in result, "em_description present");
+  const desc = result.em_description as string;
+  assert(typeof desc === "string", "description is a string");
+  // messages in window are 14:28, 14:29, 14:30 (john, non-empty content)
+  const lines = desc.split("\n");
+  assert(lines.length === 3, `expected 3 lines, got ${lines.length}`);
+  assert(lines[0] === "14:28: הנה התמונה", `line0: ${lines[0]}`);
+  assert(lines[1] === "14:29: שלחתי", `line1: ${lines[1]}`);
+  assert(lines[2] === "14:30: ראית?", `line2: ${lines[2]}`);
 });
 
 // ============================================

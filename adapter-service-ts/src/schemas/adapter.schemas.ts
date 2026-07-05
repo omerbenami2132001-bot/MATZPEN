@@ -4,6 +4,7 @@ export const AdapterRequestQuerySchema = z.object({
   startTime: z.string().regex(/^\d+$/, "startTime must be UNIX timestamp").optional(),
   endTime: z.string().regex(/^\d+$/, "endTime must be UNIX timestamp").optional(),
   recursive: z.string().regex(/^(true|false)$/i, "recursive must be 'true' or 'false'"),
+  fileIds: z.string().optional(),
 }).refine(
   (query) => {
     if (!query.startTime || !query.endTime) return true;
