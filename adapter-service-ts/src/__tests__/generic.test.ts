@@ -7,6 +7,7 @@ import "./kafkaService.test";
 import "./httpClient.test";
 import "./orchestrator.test";
 import "./dateTime.test";
+import "./runners.test";
 import { runAll } from "./harness";
 
 runAll();
